@@ -21,7 +21,13 @@ find_library(
     log
 )
 
+# Find SDL2 libraries (prebuilt in NDK)
+find_library(SDL2_LIB SDL2)
+find_library(SDL2_image_LIB SDL2_image)
+
 target_link_libraries(
     cxxgame
     ${log-lib}
+    ${SDL2_LIB}
+    ${SDL2_image_LIB}
 )
