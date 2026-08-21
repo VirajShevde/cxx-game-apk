@@ -13,6 +13,7 @@ message(STATUS "Fetching SDL2...")
 FetchContent_Declare(
     SDL2
     URL "https://github.com/libsdl-org/SDL/releases/download/release-2.28.5/SDL2-2.28.5.tar.gz"
+    URL_HASH SHA256=0c6ce15aba70e8a9dfc5b14620f57e0f4e1d4dc76669d64faebe15eac28e5590
     DOWNLOAD_EXTRACT_TIMEOUT 300
 )
 FetchContent_MakeAvailable(SDL2)
@@ -22,6 +23,7 @@ message(STATUS "Fetching SDL2_image...")
 FetchContent_Declare(
     SDL2_image
     URL "https://github.com/libsdl-org/SDL_image/releases/download/release-2.8.1/SDL2_image-2.8.1.tar.gz"
+    URL_HASH SHA256=5a88a0e35d54f7d59cb14a09e4f139d4949b4aae2c9d8a6b36db7b5e2e5bfb8f
     DOWNLOAD_EXTRACT_TIMEOUT 300
 )
 set(SDL2_INCLUDE_DIR ${SDL2_SOURCE_DIR}/include CACHE PATH "SDL2 include directory" FORCE)
