@@ -10,16 +10,18 @@ include(FetchContent)
 
 # Fetch and build SDL2
 message(STATUS "Fetching SDL2...")
-FetchContent_Declare(SDL2
-    URL https://github.com/libsdl-org/SDL/releases/download/release-2.28.5/SDL2-2.28.5.tar.gz
+FetchContent_Declare(
+    SDL2
+    URL "https://github.com/libsdl-org/SDL/releases/download/release-2.28.5/SDL2-2.28.5.tar.gz"
     DOWNLOAD_EXTRACT_TIMEOUT 300
 )
 FetchContent_MakeAvailable(SDL2)
 
 # Fetch and build SDL2_image
 message(STATUS "Fetching SDL2_image...")
-FetchContent_Declare(SDL2_image
-    URL https://github.com/libsdl-org/SDL_image/releases/download/release-2.8.1/SDL2_image-2.8.1.tar.gz
+FetchContent_Declare(
+    SDL2_image
+    URL "https://github.com/libsdl-org/SDL_image/releases/download/release-2.8.1/SDL2_image-2.8.1.tar.gz"
     DOWNLOAD_EXTRACT_TIMEOUT 300
 )
 set(SDL2_INCLUDE_DIR ${SDL2_SOURCE_DIR}/include CACHE PATH "SDL2 include directory" FORCE)
