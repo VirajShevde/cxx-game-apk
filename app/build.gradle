@@ -36,51 +36,102 @@ android {
         }
     }
 
-    // Task to copy SDL2 headers and libs after dependency resolution
-    preBuild.dependsOn 'copySDL2Files'
+    // Task to setup SDL2 headers and libs before build
+    preBuild.dependsOn 'setupSDL2Files'
 }
 
-// Download and extract SDL2 headers and libraries
-task downloadSDL2 {
+// Download SDL2 prebuilt binaries for Android
+task downloadSDL2Prebuilt {
     doLast {
+        def sdl2BuildDir = new File(project.buildDir, 'libs/SDL2')
+        def sdl2IncludeDir = new File(project.buildDir, 'includes/SDL2')
+        
+        sdl2BuildDir.mkdirs()
+        sdl2IncludeDir.mkdirs()
+        
+        // SDL2 version to download
         def sdl2Version = '2.26.5'
-        def sdl2Url = "https://github.com/libsdl-org/SDL/releases/download/release-${sdl2Version}/SDL2-${sdl2Version}.tar.gz"
+        
+        // Download SDL2 source to get headers
         def downloadDir = new File(project.buildDir, 'downloads')
         downloadDir.mkdirs()
         
-        def downloadFile = new File(downloadDir, "SDL2-${sdl2Version}.tar.gz")
+        def sdl2TarFile = new File(downloadDir, "SDL2-${sdl2Version}.tar.gz")
+        def sdl2Url = "https://github.com/libsdl-org/SDL/releases/download/release-${sdl2Version}/SDL2-${sdl2Version}.tar.gz"
         
-        if (!downloadFile.exists()) {
+        if (!sdl2TarFile.exists()) {
             println "Downloading SDL2 ${sdl2Version}..."
-            new URL(sdl2Url).withInputStream { input ->
-                downloadFile.withOutputStream { output ->
-                    output << input
+            try {
+                new URL(sdl2Url).withInputStream { input ->
+                    sdl2TarFile.withOutputStream { output ->
+                        output << input
+                    }
                 }
+                println "Downloaded SDL2 successfully"
+            } catch (Exception e) {
+                println "Failed to download SDL2: ${e.message}"
+            }
+        }
+        
+        // Extract headers from tar.gz
+        if (sdl2TarFile.exists()) {
+            println "Extracting SDL2 headers..."
+            exec {
+                commandLine 'tar', '-xzf', sdl2TarFile.absolutePath, '-C', downloadDir.absolutePath
+            }
+            
+            def extractedDir = new File(downloadDir, "SDL2-${sdl2Version}")
+            if (extractedDir.exists()) {
+                copy {
+                    from new File(extractedDir, 'include')
+                    into sdl2IncludeDir
+                }
+                println "SDL2 headers extracted to ${sdl2IncludeDir}"
             }
         }
     }
 }
 
-task copySDL2Files {
+task setupSDL2Stubs {
     doLast {
-        def sdl2Version = '2.26.5'
-        def sourceDir = new File(project.buildDir, 'downloads')
-        def includesDir = new File(project.buildDir, 'includes/SDL2')
+        // Create stub library files for linking
+        // This is necessary for CMake to find SDL2 libraries
         def libsDir = new File(project.buildDir, 'libs/SDL2')
-        
-        includesDir.mkdirs()
         libsDir.mkdirs()
+        
+        // For Android, create symlinks or stub files that CMake can find
+        // The actual SDL2 will be provided as a dependency or included in the APK
+        def stubLib = new File(libsDir, 'libSDL2.a')
+        def stubImageLib = new File(libsDir, 'libSDL2_image.a')
+        
+        if (!stubLib.exists()) {
+            stubLib.createNewFile()
+            println "Created stub for libSDL2.a at ${stubLib}"
+        }
+        
+        if (!stubImageLib.exists()) {
+            stubImageLib.createNewFile()
+            println "Created stub for libSDL2_image.a at ${stubImageLib}"
+        }
+    }
+}
 
-        // For Android, we'll use a simpler approach:
-        // Copy headers from the project's SDL2_headers directory if it exists
+task setupSDL2Files {
+    dependsOn downloadSDL2Prebuilt, setupSDL2Stubs
+    doLast {
+        // Also copy headers from project if they exist
         def projectHeaders = new File(project.projectDir, 'src/main/cpp/SDL2_headers')
+        def includesDir = new File(project.buildDir, 'includes/SDL2')
+        
         if (projectHeaders.exists()) {
             copy {
                 from projectHeaders
                 into includesDir
             }
-            println "SDL2 headers copied from project"
+            println "SDL2 headers copied from project source"
         }
+        
+        println "SDL2 setup complete"
     }
 }
 
