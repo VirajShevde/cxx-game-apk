@@ -1210,7 +1210,8 @@ void render_live_minimap(SDL_Renderer* renderer, const SDL_Rect& box, float play
 
     // Small drafting labels for orientation.
     draw_text(renderer, "N", box.x + box.w - 25, box.y + 7, 1, {110, 220, 255, 255});
-std::string current_play_map_name();
+std::string current_play_map_name;
+                                     
     draw_text(renderer, current_play_map_name(), box.x + 12, box.y + box.h - 15, 1,
               {80, 160, 200, 220});
 }
