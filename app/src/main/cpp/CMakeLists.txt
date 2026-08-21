@@ -5,10 +5,13 @@ project("cxxgame")
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# Look ONLY in the unified headers directory
-include_directories(
-    ${CMAKE_CURRENT_SOURCE_DIR}/SDL2_headers
-)
+# SDL2 include directories - passed from Gradle
+# Fall back to project local headers if paths not provided
+if(NOT SDL2_INCLUDE_DIR)
+    set(SDL2_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/SDL2_headers)
+endif()
+
+include_directories(${SDL2_INCLUDE_DIR})
 
 add_library(
     cxxgame
@@ -21,22 +24,10 @@ find_library(
     log
 )
 
-# Find SDL2 libraries - specify explicit paths
-find_library(
-    SDL2_LIB 
-    SDL2
-    PATHS ${CMAKE_CURRENT_SOURCE_DIR}/SDL2_libs
-    NO_DEFAULT_PATH
-    REQUIRED
-)
-
-find_library(
-    SDL2_image_LIB 
-    SDL2_image
-    PATHS ${CMAKE_CURRENT_SOURCE_DIR}/SDL2_libs
-    NO_DEFAULT_PATH
-    REQUIRED
-)
+# Find SDL2 libraries
+# First try to find them in Android NDK prebuilt libraries
+find_library(SDL2_LIB SDL2 REQUIRED)
+find_library(SDL2_image_LIB SDL2_image REQUIRED)
 
 target_link_libraries(
     cxxgame
