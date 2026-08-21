@@ -27,7 +27,7 @@ jobs:
           mv SDL2_image-2.6.3 SDL2_image
           rm sdl2_image.tar.gz
 
-          # Ensure all necessary SDL2 headers (including SDL_system.h) resolve under SDL2/
+          # Ensure both core SDL2 headers and SDL_image headers map correctly under SDL2/
           mkdir -p SDL2_image/include/SDL2
           cp SDL2/include/*.h SDL2_image/include/SDL2/ 2>/dev/null || true
           cp SDL2_image/include/*.h SDL2_image/include/SDL2/ 2>/dev/null || true
@@ -57,3 +57,4 @@ jobs:
         with:
           name: app-debug
           path: app/build/outputs/apk/debug/app-debug.apk
+          
