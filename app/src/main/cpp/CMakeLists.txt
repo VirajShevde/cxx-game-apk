@@ -5,9 +5,9 @@ project("cxxgame")
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+# Point to the single, unified header folder we created in the workflow
 include_directories(
-    ${CMAKE_CURRENT_SOURCE_DIR}/SDL2/include
-    ${CMAKE_CURRENT_SOURCE_DIR}/SDL2_image
+    ${CMAKE_CURRENT_SOURCE_DIR}/SDL2_headers
 )
 
 add_library(
