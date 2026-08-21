@@ -27,12 +27,16 @@ jobs:
           mv SDL2_image-2.6.3 SDL2_image
           rm sdl2_image.tar.gz
 
-          # FIX: Create SDL2 directory directly inside SDL2_image so CMake finds <SDL2/SDL_image.h>
-          mkdir -p SDL2_image/SDL2
-          cp SDL2_image/*.h SDL2_image/SDL2/ 2>/dev/null || true
-          if [ -d "SDL2_image/include" ]; then
-            cp SDL2_image/include/*.h SDL2_image/SDL2/ 2>/dev/null || true
-          fi
+          # BULLETPROOF FIX: Create the Unified Headers Directory
+          mkdir -p SDL2_headers/SDL2
+          
+          # Copy all headers so that both #include "SDL.h" and #include <SDL2/SDL.h> work
+          cp SDL2/include/*.h SDL2_headers/
+          cp SDL2/include/*.h SDL2_headers/SDL2/
+          
+          # Copy all SDL_image headers
+          cp SDL2_image/*.h SDL2_headers/ 2>/dev/null || true
+          cp SDL2_image/*.h SDL2_headers/SDL2/ 2>/dev/null || true
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -59,4 +63,3 @@ jobs:
         with:
           name: app-debug
           path: app/build/outputs/apk/debug/app-debug.apk
-          
