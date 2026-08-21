@@ -21,9 +21,22 @@ find_library(
     log
 )
 
-# Find SDL2 libraries (prebuilt in NDK)
-find_library(SDL2_LIB SDL2)
-find_library(SDL2_image_LIB SDL2_image)
+# Find SDL2 libraries - specify explicit paths
+find_library(
+    SDL2_LIB 
+    SDL2
+    PATHS ${CMAKE_CURRENT_SOURCE_DIR}/SDL2_libs
+    NO_DEFAULT_PATH
+    REQUIRED
+)
+
+find_library(
+    SDL2_image_LIB 
+    SDL2_image
+    PATHS ${CMAKE_CURRENT_SOURCE_DIR}/SDL2_libs
+    NO_DEFAULT_PATH
+    REQUIRED
+)
 
 target_link_libraries(
     cxxgame
