@@ -86,8 +86,4 @@ task copySDL2Files {
 
 dependencies {
     implementation 'androidx.appcompat:appcompat:1.6.1'
-    
-    // SDL2 native bindings for Android
-    // Note: Using a community package; verify version compatibility with your needs
-    implementation 'org.libsdl.android:SDL2:2.26.5'
 }
