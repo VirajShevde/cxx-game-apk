@@ -16,6 +16,9 @@ android {
         externalNativeBuild {
             cmake {
                 cppFlags ""
+                // Pass SDL2 paths to CMake
+                arguments "-DSDL2_INCLUDE_DIR=${project.buildDir}/includes/SDL2",
+                          "-DSDL2_LIB_DIR=${project.buildDir}/libs/SDL2"
             }
         }
     }
@@ -32,8 +35,59 @@ android {
             version "3.22.1"
         }
     }
+
+    // Task to copy SDL2 headers and libs after dependency resolution
+    preBuild.dependsOn 'copySDL2Files'
+}
+
+// Download and extract SDL2 headers and libraries
+task downloadSDL2 {
+    doLast {
+        def sdl2Version = '2.26.5'
+        def sdl2Url = "https://github.com/libsdl-org/SDL/releases/download/release-${sdl2Version}/SDL2-${sdl2Version}.tar.gz"
+        def downloadDir = new File(project.buildDir, 'downloads')
+        downloadDir.mkdirs()
+        
+        def downloadFile = new File(downloadDir, "SDL2-${sdl2Version}.tar.gz")
+        
+        if (!downloadFile.exists()) {
+            println "Downloading SDL2 ${sdl2Version}..."
+            new URL(sdl2Url).withInputStream { input ->
+                downloadFile.withOutputStream { output ->
+                    output << input
+                }
+            }
+        }
+    }
+}
+
+task copySDL2Files {
+    doLast {
+        def sdl2Version = '2.26.5'
+        def sourceDir = new File(project.buildDir, 'downloads')
+        def includesDir = new File(project.buildDir, 'includes/SDL2')
+        def libsDir = new File(project.buildDir, 'libs/SDL2')
+        
+        includesDir.mkdirs()
+        libsDir.mkdirs()
+
+        // For Android, we'll use a simpler approach:
+        // Copy headers from the project's SDL2_headers directory if it exists
+        def projectHeaders = new File(project.projectDir, 'src/main/cpp/SDL2_headers')
+        if (projectHeaders.exists()) {
+            copy {
+                from projectHeaders
+                into includesDir
+            }
+            println "SDL2 headers copied from project"
+        }
+    }
 }
 
 dependencies {
     implementation 'androidx.appcompat:appcompat:1.6.1'
+    
+    // SDL2 native bindings for Android
+    // Note: Using a community package; verify version compatibility with your needs
+    implementation 'org.libsdl.android:SDL2:2.26.5'
 }
