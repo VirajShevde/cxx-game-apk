@@ -27,9 +27,10 @@ jobs:
           mv SDL2_image-2.6.3 SDL2_image
           rm sdl2_image.tar.gz
 
-          # Ensure the header structure matches <SDL2/SDL_image.h>
+          # Ensure all necessary SDL2 headers (including SDL_system.h) resolve under SDL2/
           mkdir -p SDL2_image/include/SDL2
-          cp SDL2_image/include/*.h SDL2_image/include/SDL2/ 2>/dev/null || cp SDL2_image/*.h SDL2_image/include/SDL2/ 2>/dev/null || true
+          cp SDL2/include/*.h SDL2_image/include/SDL2/ 2>/dev/null || true
+          cp SDL2_image/include/*.h SDL2_image/include/SDL2/ 2>/dev/null || true
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
