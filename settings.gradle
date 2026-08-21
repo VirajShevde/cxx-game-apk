@@ -10,6 +10,9 @@ dependencyResolutionManagement {
     repositories {
         google()
         mavenCentral()
+        // Additional repository for SDL2 packages if needed
+        maven { url 'https://jcenter.bintray.com' }
+        maven { url 'https://maven.pkg.github.com/libsdl-org/*' }
     }
 }
 rootProject.name = "CXXGameApp"
