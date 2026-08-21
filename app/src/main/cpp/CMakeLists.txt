@@ -25,9 +25,20 @@ find_library(
 )
 
 # Find SDL2 libraries
-# First try to find them in Android NDK prebuilt libraries
-find_library(SDL2_LIB SDL2 REQUIRED)
-find_library(SDL2_image_LIB SDL2_image REQUIRED)
+# Search in the directory provided by Gradle build system
+find_library(
+    SDL2_LIB
+    SDL2
+    HINTS ${SDL2_LIB_DIR}
+    REQUIRED
+)
+
+find_library(
+    SDL2_image_LIB
+    SDL2_image
+    HINTS ${SDL2_LIB_DIR}
+    REQUIRED
+)
 
 target_link_libraries(
     cxxgame
