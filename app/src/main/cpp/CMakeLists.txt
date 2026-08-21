@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.22.1)
 
 project("cxxgame")
 
-# Explicitly add the downloaded SDL2 headers directory
+# Point directly to the include folder inside the downloaded SDL2 directory
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/SDL2/include)
 
 add_library(
