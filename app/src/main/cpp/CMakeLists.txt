@@ -13,7 +13,7 @@ message(STATUS "Fetching SDL2...")
 FetchContent_Declare(
     SDL2
     URL "https://github.com/libsdl-org/SDL/releases/download/release-2.28.5/SDL2-2.28.5.tar.gz"
-    URL_HASH SHA256=0c6ce15aba70e8a9dfc5b14620f57e0f4e1d4dc76669d64faebe15eac28e5590
+    URL_HASH SHA256=332cb37d0be20cb9541739c61f79bae5a477427d79ae85e352089afdaf6666e4
 )
 FetchContent_MakeAvailable(SDL2)
 
