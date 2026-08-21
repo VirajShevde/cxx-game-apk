@@ -5,39 +5,51 @@ project("cxxgame")
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# SDL2 include directories - passed from Gradle
-# Fall back to project local headers if paths not provided
-if(NOT SDL2_INCLUDE_DIR)
-    set(SDL2_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/SDL2_headers)
-endif()
+# Include FetchContent to download and build SDL2 and SDL2_image
+include(FetchContent)
 
-message(STATUS "SDL2_INCLUDE_DIR: ${SDL2_INCLUDE_DIR}")
-message(STATUS "SDL2_LIB_DIR: ${SDL2_LIB_DIR}")
+# Fetch and build SDL2
+message(STATUS "Fetching SDL2...")
+FetchContent_Declare(SDL2
+    URL https://github.com/libsdl-org/SDL/releases/download/release-2.28.5/SDL2-2.28.5.tar.gz
+    DOWNLOAD_EXTRACT_TIMEOUT 300
+)
+FetchContent_MakeAvailable(SDL2)
 
-include_directories(${SDL2_INCLUDE_DIR})
+# Fetch and build SDL2_image
+message(STATUS "Fetching SDL2_image...")
+FetchContent_Declare(SDL2_image
+    URL https://github.com/libsdl-org/SDL_image/releases/download/release-2.8.1/SDL2_image-2.8.1.tar.gz
+    DOWNLOAD_EXTRACT_TIMEOUT 300
+)
+set(SDL2_INCLUDE_DIR ${SDL2_SOURCE_DIR}/include CACHE PATH "SDL2 include directory" FORCE)
+FetchContent_MakeAvailable(SDL2_image)
 
+message(STATUS "SDL2 include directory: ${SDL2_INCLUDE_DIR}")
+message(STATUS "SDL2_image include directory: ${SDL2_image_SOURCE_DIR}")
+
+# Add the C++ source file
 add_library(
     cxxgame
     SHARED
     game57-4.cxx
 )
 
+# Find the log library (standard Android library)
 find_library(
     log-lib
     log
 )
 
-# Link libraries - link SDL2 and SDL2_image by name
-# They are provided by the Android NDK or as system libraries
+# Link SDL2 and SDL2_image with the built targets
 target_link_libraries(
     cxxgame
     ${log-lib}
-    SDL2
-    SDL2_image
+    SDL2::SDL2
+    SDL2_image::SDL2_image
 )
 
 message(STATUS "Build configuration:")
 message(STATUS "  Target: cxxgame")
-message(STATUS "  SDL2 Include: ${SDL2_INCLUDE_DIR}")
-message(STATUS "  SDL2 Lib Dir: ${SDL2_LIB_DIR}")
-message(STATUS "  Linking SDL2 and SDL2_image by name")
+message(STATUS "  SDL2 linked: SDL2::SDL2")
+message(STATUS "  SDL2_image linked: SDL2_image::SDL2_image")
