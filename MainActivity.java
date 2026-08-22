@@ -2,7 +2,7 @@
 // AndroidManifest.xml / build.gradle applicationId). It must match the
 // "com_yourcompany_tacticalshooter" segment of the JNI function name in
 // game57.cxx exactly (dots become underscores there).
-package com.yourcompany.tacticalshooter;
+package com.example.cxxgame;
 
 import android.app.Activity;
 import android.content.ContentResolver;
