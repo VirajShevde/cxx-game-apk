@@ -17,11 +17,14 @@ android {
             cmake {
                 cppFlags ""
                 // Pass SDL2 paths to CMake
-                arguments "-DSDL2_INCLUDE_DIR=${project.buildDir}/includes/SDL2",
+                arguments "-DANDROID_STL=c++_static",
+                          "-DSDL2_INCLUDE_DIR=${project.buildDir}/includes/SDL2",
                           "-DSDL2_LIB_DIR=${project.buildDir}/libs/SDL2"
             }
         }
     }
+    
+
 
     buildTypes {
         release {
