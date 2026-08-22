@@ -723,7 +723,7 @@ std::string androidPortraitPickedPath;
 bool androidPortraitPickPending = false;
 
 extern "C" JNIEXPORT void JNICALL
-Java_com_yourcompany_tacticalshooter_MainActivity_nativeOnImagePicked(JNIEnv* env, jobject /*thiz*/, jstring path) {
+Java_com_example_cxxgame_MainActivity_nativeOnImagePicked(JNIEnv* env, jobject /*thiz*/, jstring path) {
     // Runs on the Java UI thread - just stash the result behind a mutex.
     // The game loop (a different thread) picks it up next frame.
     const char* cpath = env->GetStringUTFChars(path, nullptr);
