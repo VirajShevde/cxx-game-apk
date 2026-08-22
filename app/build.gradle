@@ -17,7 +17,7 @@ android {
             cmake {
                 cppFlags ""
                 // Pass SDL2 paths to CMake
-                arguments "-DANDROID_STL=c++_static",
+                arguments "-DANDROID_STL=c++_shared",
                           "-DSDL2_INCLUDE_DIR=${project.buildDir}/includes/SDL2",
                           "-DSDL2_LIB_DIR=${project.buildDir}/libs/SDL2"
             }
