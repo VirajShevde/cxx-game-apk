@@ -9,13 +9,14 @@ import android.content.ContentResolver;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
-import android.widget.Toast;
+import android.widget.TextView;
+import android.widget.ScrollView;
+import android.graphics.Color;
 
 import org.libsdl.app.SDLActivity;
 
 import java.io.File;
 import java.io.FileOutputStream;
-import java.io.FileWriter;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.PrintWriter;
@@ -29,60 +30,69 @@ public class MainActivity extends SDLActivity {
 
     private static final int PICK_IMAGE_REQUEST = 4201;
 
-    // --- TEMPORARY CRASH LOGGER ---------------------------------------
-    // Catches whatever kills the app on startup and writes it to a plain
-    // text file in the app's own external files dir, so it can be read
-    // with any file manager app without needing adb/logcat/a PC.
-    // Remove this block once the crash is fixed.
-    @Override
-    protected void onCreate(Bundle savedInstanceState) {
+    // --- TEMPORARY CRASH CATCHER -----------------------------------------
+    // Two layers so we catch the exception no matter which thread it comes
+    // from: (1) a JVM-wide default handler for background/native-callback
+    // threads (e.g. SDL's own game loop thread), and (2) a try/catch around
+    // onCreate for synchronous crashes on the main thread before that
+    // handler would normally even apply. Either way, the app shows the full
+    // error as on-screen text instead of just closing - screenshot it.
+    // Remove this whole block once the underlying crash is fixed.
+    private static MainActivity currentInstance;
+
+    static {
         final Thread.UncaughtExceptionHandler defaultHandler =
                 Thread.getDefaultUncaughtExceptionHandler();
         Thread.setDefaultUncaughtExceptionHandler(new Thread.UncaughtExceptionHandler() {
             @Override
-            public void uncaughtException(Thread thread, Throwable ex) {
-                try {
-                    File outDir = getExternalFilesDir(null);
-                    if (outDir != null) {
-                        File outFile = new File(outDir, "crash_log.txt");
-                        StringWriter sw = new StringWriter();
-                        ex.printStackTrace(new PrintWriter(sw));
-                        FileWriter fw = new FileWriter(outFile, false);
-                        fw.write(sw.toString());
-                        fw.close();
-                    }
-                } catch (Exception loggingError) {
-                    loggingError.printStackTrace();
-                }
-                if (defaultHandler != null) {
+            public void uncaughtException(final Thread thread, final Throwable ex) {
+                final MainActivity activity = currentInstance;
+                if (activity != null) {
+                    activity.runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            activity.showErrorScreen(ex);
+                        }
+                    });
+                    // Give the UI thread a moment to actually render the
+                    // error screen before anything else can tear the
+                    // process down.
+                    try { Thread.sleep(3000); } catch (InterruptedException ignored) {}
+                } else if (defaultHandler != null) {
                     defaultHandler.uncaughtException(thread, ex);
                 }
             }
         });
+    }
 
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        currentInstance = this;
         try {
             super.onCreate(savedInstanceState);
         } catch (Throwable t) {
-            // Catches crashes that happen synchronously during onCreate
-            // (e.g. UnsatisfiedLinkError from loadLibrary) before the
-            // uncaught handler above would otherwise fire.
-            try {
-                File outDir = getExternalFilesDir(null);
-                if (outDir != null) {
-                    File outFile = new File(outDir, "crash_log.txt");
-                    StringWriter sw = new StringWriter();
-                    t.printStackTrace(new PrintWriter(sw));
-                    FileWriter fw = new FileWriter(outFile, false);
-                    fw.write(sw.toString());
-                    fw.close();
-                }
-            } catch (Exception loggingError) {
-                loggingError.printStackTrace();
-            }
-            throw t;
+            showErrorScreen(t);
         }
     }
-    // --------------------------------------------------------------------
+
+    private void showErrorScreen(Throwable t) {
+        StringWriter sw = new StringWriter();
+        t.printStackTrace(new PrintWriter(sw));
+
+        TextView tv = new TextView(this);
+        tv.setText(sw.toString());
+        tv.setTextColor(Color.WHITE);
+        tv.setBackgroundColor(Color.BLACK);
+        tv.setTextIsSelectable(true);
+        tv.setPadding(24, 24, 24, 24);
+        tv.setTextSize(12);
+
+        ScrollView scroll = new ScrollView(this);
+        scroll.addView(tv);
+
+        setContentView(scroll);
+    }
+    // -----------------------------------------------------------------------
 
     // Called from native code (game57.cxx: android_open_image_picker) when
     // the player taps the profile portrait. ACTION_OPEN_DOCUMENT is the
@@ -98,7 +108,6 @@ public class MainActivity extends SDLActivity {
     @Override
     protected String[] getLibraries() {
         return new String[] {
-            
             "cxxgame"
         };
     }
