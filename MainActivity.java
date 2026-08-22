@@ -35,6 +35,13 @@ public class MainActivity extends SDLActivity {
         intent.setType("image/*");
         startActivityForResult(intent, PICK_IMAGE_REQUEST);
     }
+    @Override
+protected String[] getLibraries() {
+    return new String[] {
+        "SDL2",
+        "cxxgame"
+    };
+}
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
