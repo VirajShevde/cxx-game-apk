@@ -41,11 +41,10 @@ jobs:
           cp SDL2_image/*.h SDL2_headers/ 2>/dev/null || true
           cp SDL2_image/*.h SDL2_headers/SDL2/ 2>/dev/null || true
 
-      - name: Copy SDL2 Android Java glue
+            - name: Copy SDL2 Android Java glue
         run: |
           mkdir -p app/src/main/java/org/libsdl/app
-
-          cp -R app/src/main/cpp/SDL2/android-project/src/main/java/org/libsdl/app/. \
+          cp -R app/src/main/cpp/SDL2/android-project/app/src/main/java/org/libsdl/app/. \
                 app/src/main/java/org/libsdl/app/
 
       - name: Verify Android Java sources
