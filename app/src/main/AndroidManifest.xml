@@ -5,6 +5,7 @@
     <application
         android:allowBackup="true"
         android:label="CXX Game"
+        android:icon="@mipmap/ic_launcher"
         android:supportsRtl="true"
         android:theme="@style/Theme.AppCompat.Light.NoActionBar">
         <activity
