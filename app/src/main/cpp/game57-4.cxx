@@ -1,4 +1,4 @@
-8/*
+/*
  * v13 security update:
  * - Save MAC key is Android Keystore-backed and non-exportable.
  * - Native C++ contains no save-MAC secret.
