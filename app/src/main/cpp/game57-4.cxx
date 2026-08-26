@@ -1,4 +1,4 @@
-/*
+8/*
  * v13 security update:
  * - Save MAC key is Android Keystore-backed and non-exportable.
  * - Native C++ contains no save-MAC secret.
@@ -173,7 +173,8 @@ static void DrawAllGameplayVisuals(SDL_Renderer* renderer, int cameraX, int came
 
 
 
-#include <SDL2/SDL_image.h>
+#include "SDL_image.h"
+
 #include <iostream>
 #include <cmath>
 #include <cstdlib>
