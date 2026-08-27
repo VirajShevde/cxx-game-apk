@@ -163,7 +163,7 @@ ExternalProject_Add(
     no-shared
     no-async
     no-tests
-    no-apps
+    
     no-engine
     no-comp
 
