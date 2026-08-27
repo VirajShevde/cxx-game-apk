@@ -103,6 +103,127 @@ set(OPENSSL_CRYPTO
 
 
 # =========================================================
+# Build OpenSSL
+# =========================================================
+
+ExternalProject_Add(
+
+    openssl_build
+
+    GIT_REPOSITORY
+    https://github.com/openssl/openssl.git
+
+    GIT_TAG
+    OpenSSL_1_1_1w
+
+
+    SOURCE_DIR
+    ${OPENSSL_SOURCE}
+
+
+    CONFIGURE_COMMAND
+
+    ${CMAKE_COMMAND} -E env
+
+    ANDROID_NDK_ROOT=${ANDROID_NDK}
+
+    ${CMAKE_COMMAND} -E chdir
+
+    ${OPENSSL_SOURCE}
+
+    perl Configure
+
+    ${OPENSSL_TARGET}
+
+    -D__ANDROID_API__=23
+
+    no-shared
+    no-async
+    no-tests
+    no-engine
+    no-comp
+
+    --prefix=${OPENSSL_ROOT}
+
+
+
+    BUILD_COMMAND
+
+    ${CMAKE_COMMAND} -E chdir
+
+    ${OPENSSL_SOURCE}
+
+    make -j4
+
+
+
+    INSTALL_COMMAND
+
+    ${CMAKE_COMMAND} -E chdir
+
+    ${OPENSSL_SOURCE}
+
+    make install_sw
+
+
+
+    BUILD_BYPRODUCTS
+
+    ${OPENSSL_SSL}
+
+    ${OPENSSL_CRYPTO}
+
+)
+
+
+
+# =========================================================
+# OpenSSL Imported Libraries
+# =========================================================
+
+add_library(
+    openssl_crypto
+    STATIC
+    IMPORTED
+)
+
+
+set_target_properties(
+    openssl_crypto
+    PROPERTIES
+
+    IMPORTED_LOCATION
+    ${OPENSSL_CRYPTO}
+)
+
+
+
+add_library(
+
+
+set(OPENSSL_SOURCE
+    ${CMAKE_BINARY_DIR}/openssl-source
+)
+
+set(OPENSSL_ROOT
+    ${CMAKE_BINARY_DIR}/openssl/${ANDROID_ABI}/install
+)
+
+set(OPENSSL_INCLUDE_DIR
+    ${OPENSSL_ROOT}/include
+)
+
+set(OPENSSL_SSL
+    ${OPENSSL_ROOT}/lib/libssl.a
+)
+
+set(OPENSSL_CRYPTO
+    ${OPENSSL_ROOT}/lib/libcrypto.a
+)
+
+
+
+# =========================================================
 # OpenSSL Build
 # =========================================================
 
