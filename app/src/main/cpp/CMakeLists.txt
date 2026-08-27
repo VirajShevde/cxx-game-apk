@@ -108,6 +108,9 @@ set(OPENSSL_CRYPTO
 # =========================================================
 # OpenSSL Build
 # =========================================================
+# =========================================================
+# Build OpenSSL 1.1.1w
+# =========================================================
 
 ExternalProject_Add(
 
@@ -127,7 +130,7 @@ ExternalProject_Add(
 
     ${CMAKE_COMMAND} -E env
 
-    PATH=${ANDROID_NDK}/toolchains/llvm/prebuilt/linux-x86_64/bin:$ENV{PATH}
+    PATH=/usr/bin:${ANDROID_NDK}/toolchains/llvm/prebuilt/linux-x86_64/bin:$ENV{PATH}
 
     ANDROID_NDK_ROOT=${ANDROID_NDK}
 
@@ -151,7 +154,14 @@ ExternalProject_Add(
     no-comp
 
     --prefix=${OPENSSL_ROOT}
-        BUILD_COMMAND
+
+
+
+    BUILD_COMMAND
+
+    ${CMAKE_COMMAND} -E env
+
+    PATH=/usr/bin:${ANDROID_NDK}/toolchains/llvm/prebuilt/linux-x86_64/bin:$ENV{PATH}
 
     ${CMAKE_COMMAND} -E chdir
 
@@ -162,6 +172,10 @@ ExternalProject_Add(
 
 
     INSTALL_COMMAND
+
+    ${CMAKE_COMMAND} -E env
+
+    PATH=/usr/bin:${ANDROID_NDK}/toolchains/llvm/prebuilt/linux-x86_64/bin:$ENV{PATH}
 
     ${CMAKE_COMMAND} -E chdir
 
