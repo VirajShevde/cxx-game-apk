@@ -129,45 +129,41 @@ ExternalProject_Add(
     SOURCE_DIR
     ${OPENSSL_SOURCE}
 
+CONFIGURE_COMMAND
 
+${CMAKE_COMMAND} -E env
 
-    CONFIGURE_COMMAND
+PATH=${ANDROID_NDK}/toolchains/llvm/prebuilt/linux-x86_64/bin:$ENV{PATH}
 
-    ${CMAKE_COMMAND} -E env
+ANDROID_NDK_ROOT=${ANDROID_NDK}
 
-    PATH=/usr/bin:${ANDROID_NDK}/toolchains/llvm/prebuilt/linux-x86_64/bin:$ENV{PATH}
+CC=${ANDROID_NDK}/toolchains/llvm/prebuilt/linux-x86_64/bin/${OPENSSL_TRIPLE}23-clang
 
-    ANDROID_NDK_ROOT=${ANDROID_NDK}
+CXX=${ANDROID_NDK}/toolchains/llvm/prebuilt/linux-x86_64/bin/${OPENSSL_TRIPLE}23-clang++
 
-    CC=${OPENSSL_TRIPLE}23-clang
+AR=${ANDROID_NDK}/toolchains/llvm/prebuilt/linux-x86_64/bin/${OPENSSL_TRIPLE}-ar
 
-    CXX=${OPENSSL_TRIPLE}23-clang++
+RANLIB=${ANDROID_NDK}/toolchains/llvm/prebuilt/linux-x86_64/bin/${OPENSSL_TRIPLE}-ranlib
 
-    AR=${OPENSSL_TRIPLE}-ar
+${CMAKE_COMMAND} -E chdir
 
-    RANLIB=${OPENSSL_TRIPLE}-ranlib
+${OPENSSL_SOURCE}
 
+perl Configure
 
-    ${CMAKE_COMMAND} -E chdir
+${OPENSSL_TARGET}
 
-    ${OPENSSL_SOURCE}
+-D__ANDROID_API__=23
 
-    perl Configure
+no-shared
+no-async
+no-tests
+no-engine
+no-comp
 
-    ${OPENSSL_TARGET}
+--prefix=${OPENSSL_ROOT}
 
-    --cross-compile-prefix=${OPENSSL_TRIPLE}-
-
-    -D__ANDROID_API__=23
-
-    no-shared
-    no-async
-    no-tests
     
-    no-engine
-    no-comp
-
-    --prefix=${OPENSSL_ROOT}
 
 
 
