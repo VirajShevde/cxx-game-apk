@@ -2,351 +2,281 @@ name: Build Android APK
 
 on:
   push:
-  workflow_dispatch:
+
 
 jobs:
+
   build:
+
     runs-on: ubuntu-latest
+
+
+    strategy:
+
+      matrix:
+
+        abi:
+
+          - arm64-v8a
+          - armeabi-v7a
+          - x86
+          - x86_64
+
+
 
     steps:
 
-      # =====================================================
-      # Checkout repository
-      # =====================================================
+
       - name: Checkout repository
         uses: actions/checkout@v4
 
 
-      # =====================================================
-      # Java 17
-      # =====================================================
-      - name: Set up Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: "17"
 
-
-      # =====================================================
-      # Android SDK
-      # =====================================================
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
 
 
-      # =====================================================
-      # Gradle
-      # =====================================================
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+
+        with:
+
+          distribution: temurin
+
+          java-version: "17"
+
+
+
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v3
+
         with:
+
           gradle-version: "8.5"
 
 
+
       # =====================================================
-      # Android NDK + CMake
+      # Build OpenSSL 1.1.1w
       # =====================================================
-      - name: Install Android NDK and CMake
+
+      - name: Build OpenSSL 1.1.1w (${{ matrix.abi }})
         shell: bash
+
         run: |
+
           set -e
 
-          sdkmanager --install "ndk;25.1.8937393"
-          sdkmanager --install "cmake;3.22.1"
+
+          git clone \
+            --depth 1 \
+            --branch OpenSSL_1_1_1w \
+            https://github.com/openssl/openssl.git
 
 
-      # =====================================================
-      # Linux build dependencies
-      # =====================================================
-      - name: Install build dependencies
-        shell: bash
-        run: |
-          set -e
-
-          sudo apt-get update
-
-          sudo apt-get install -y \
-            build-essential \
-            perl \
-            make \
-            curl \
-            tar \
-            gzip
+          cd openssl
 
 
-      # =====================================================
-      # Download SDL2 and SDL2_image
-      # =====================================================
-      - name: Download SDL2 and SDL2_image
-        shell: bash
-        run: |
-          set -e
 
-          cd app/src/main/cpp
-
-          rm -rf SDL2
-          rm -rf SDL2_image
-
-          curl -L \
-            -o sdl2.tar.gz \
-            https://github.com/libsdl-org/SDL/releases/download/release-2.28.5/SDL2-2.28.5.tar.gz
-
-          tar -xzf sdl2.tar.gz
-
-          mv SDL2-2.28.5 SDL2
-
-          rm -f sdl2.tar.gz
-
-          curl -L \
-            -o sdl2_image.tar.gz \
-            https://github.com/libsdl-org/SDL_image/releases/download/release-2.8.1/SDL2_image-2.8.1.tar.gz
-
-          tar -xzf sdl2_image.tar.gz
-
-          mv SDL2_image-2.8.1 SDL2_image
-
-          rm -f sdl2_image.tar.gz
+          export API=23
 
 
-      # =====================================================
-      # Copy SDL2 Android Java files
-      # =====================================================
-      - name: Copy SDL2 Java files
-        shell: bash
-        run: |
-          set -e
-
-          mkdir -p app/src/main/java/org/libsdl/app
-
-          cp -R \
-            app/src/main/cpp/SDL2/android-project/app/src/main/java/org/libsdl/app/. \
-            app/src/main/java/org/libsdl/app/
+          export TOOLCHAIN=$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin
 
 
-      # =====================================================
-      # Build OpenSSL for Android ARM64
-      # =====================================================
-      - name: Build OpenSSL for Android arm64-v8a
-        shell: bash
-        run: |
-          set -e
-
-          # -------------------------------------------------
-          # Android NDK environment required by OpenSSL
-          # -------------------------------------------------
-
-          export ANDROID_NDK_ROOT="$ANDROID_HOME/ndk/25.1.8937393"
-
-          export ANDROID_NDK_HOME="$ANDROID_NDK_ROOT"
-
-          export TOOLCHAIN="$ANDROID_NDK_ROOT/toolchains/llvm/prebuilt/linux-x86_64"
-
-          export ANDROID_API=23
-
-          # Put the NDK LLVM compiler directory first.
-          export PATH="$TOOLCHAIN/bin:$PATH"
+          export PATH=$TOOLCHAIN:$PATH
 
 
-          echo "========================================"
-          echo "OpenSSL Android configuration"
-          echo "========================================"
 
-          echo "ANDROID_NDK_ROOT:"
-          echo "$ANDROID_NDK_ROOT"
-
-          echo "ANDROID_NDK_HOME:"
-          echo "$ANDROID_NDK_HOME"
-
-          echo "TOOLCHAIN:"
-          echo "$TOOLCHAIN"
-
-          echo "ANDROID_API:"
-          echo "$ANDROID_API"
-
-          echo "clang found at:"
-          command -v clang
-
-          echo "clang version:"
-          clang --version
-
-          echo "========================================"
+          ABI=${{ matrix.abi }}
 
 
-          # Verify NDK installation.
 
-          test -d "$ANDROID_NDK_ROOT"
+          if [ "$ABI" = "arm64-v8a" ]; then
 
-          test -d "$TOOLCHAIN"
-
-          test -d "$TOOLCHAIN/bin"
-
-          test -x "$TOOLCHAIN/bin/clang"
-
-          test -x \
-            "$TOOLCHAIN/bin/aarch64-linux-android${ANDROID_API}-clang"
+              TARGET=android-arm64
 
 
-          # -------------------------------------------------
-          # Download OpenSSL
-          # -------------------------------------------------
+          elif [ "$ABI" = "armeabi-v7a" ]; then
 
-          cd /tmp
-
-          rm -rf openssl-3.0.15
-
-          rm -f openssl.tar.gz
+              TARGET=android-arm
 
 
-          curl -L \
-            -o openssl.tar.gz \
-            https://www.openssl.org/source/openssl-3.0.15.tar.gz
+          elif [ "$ABI" = "x86" ]; then
+
+              TARGET=android-x86
 
 
-          tar -xzf openssl.tar.gz
+          elif [ "$ABI" = "x86_64" ]; then
+
+              TARGET=android-x86_64
 
 
-          cd openssl-3.0.15
+          else
+
+              echo "Unsupported ABI"
+
+              exit 1
+
+          fi
 
 
-          # -------------------------------------------------
-          # Configure OpenSSL
-          # -------------------------------------------------
 
-          ./Configure \
-            android-arm64 \
-            -D__ANDROID_API__=${ANDROID_API} \
-            no-shared \
-            no-tests \
-            --prefix="$GITHUB_WORKSPACE/app/src/main/cpp/openssl/arm64-v8a"
+          PREFIX=$GITHUB_WORKSPACE/app/src/main/cpp/openssl/$ABI
 
 
-          # -------------------------------------------------
-          # Build OpenSSL
-          # -------------------------------------------------
 
-          make -j"$(nproc)"
+          echo "Building OpenSSL:"
+          echo "ABI=$ABI"
+          echo "TARGET=$TARGET"
+          echo "PREFIX=$PREFIX"
 
 
-          # -------------------------------------------------
-          # Install OpenSSL
-          # -------------------------------------------------
+
+          perl Configure \
+
+              $TARGET \
+
+              -D__ANDROID_API__=$API \
+
+              no-shared \
+
+              no-tests \
+
+              no-engine \
+
+              no-comp \
+
+              no-async \
+
+              --prefix=$PREFIX
+
+
+
+          make -j$(nproc)
+
 
           make install_sw
 
 
+
       # =====================================================
-      # Normalize OpenSSL library location
+      # SDL2 + SDL2_image
       # =====================================================
-      - name: Normalize OpenSSL library paths
+
+      - name: Download SDL2 and SDL2_image
+
         shell: bash
+
         run: |
-          set -e
 
-          OPENSSL_DIR="$GITHUB_WORKSPACE/app/src/main/cpp/openssl/arm64-v8a"
-
-          mkdir -p "$OPENSSL_DIR/lib"
+          cd app/src/main/cpp
 
 
-          if [ -f "$OPENSSL_DIR/lib64/libssl.a" ]; then
 
-            cp \
-              "$OPENSSL_DIR/lib64/libssl.a" \
-              "$OPENSSL_DIR/lib/libssl.a"
+          curl -L -o sdl2.tar.gz \
 
-          fi
+          https://github.com/libsdl-org/SDL/releases/download/release-2.28.5/SDL2-2.28.5.tar.gz
 
 
-          if [ -f "$OPENSSL_DIR/lib64/libcrypto.a" ]; then
 
-            cp \
-              "$OPENSSL_DIR/lib64/libcrypto.a" \
-              "$OPENSSL_DIR/lib/libcrypto.a"
+          tar -xzf sdl2.tar.gz
 
-          fi
+
+          rm -rf SDL2
+
+
+          mv SDL2-2.28.5 SDL2
+
+
+          rm sdl2.tar.gz
+
+
+
+          curl -L -o sdl2_image.tar.gz \
+
+          https://github.com/libsdl-org/SDL_image/releases/download/release-2.8.1/SDL2_image-2.8.1.tar.gz
+
+
+
+          tar -xzf sdl2_image.tar.gz
+
+
+          rm -rf SDL2_image
+
+
+          mv SDL2_image-2.8.1 SDL2_image
+
+
+          rm sdl2_image.tar.gz
+
+
 
 
       # =====================================================
-      # Verify OpenSSL files required by CMakeLists.txt
+      # SDL Java files
       # =====================================================
-      - name: Verify OpenSSL files
+
+      - name: Copy SDL2 Java files
+
         shell: bash
+
         run: |
-          set -e
-
-          OPENSSL_DIR="$GITHUB_WORKSPACE/app/src/main/cpp/openssl/arm64-v8a"
 
 
-          echo "========================================"
-          echo "OpenSSL output"
-          echo "========================================"
-
-          find "$OPENSSL_DIR" -type f | sort
+          mkdir -p app/src/main/java/org/libsdl/app
 
 
-          echo "========================================"
-          echo "Checking required CMake files"
-          echo "========================================"
+          cp -R \
+
+          app/src/main/cpp/SDL2/android-project/app/src/main/java/org/libsdl/app/. \
+
+          app/src/main/java/org/libsdl/app/
 
 
-          test -f \
-            "$OPENSSL_DIR/include/openssl/ssl.h"
 
-
-          test -f \
-            "$OPENSSL_DIR/lib/libssl.a"
-
-
-          test -f \
-            "$OPENSSL_DIR/lib/libcrypto.a"
-
-
-          echo "========================================"
-          echo "OpenSSL verification successful"
-          echo "========================================"
-
-
-      # =====================================================
-      # Verify Java files
-      # =====================================================
       - name: Verify Java files
+
         shell: bash
+
         run: |
-          set -e
 
-          test -f \
-            app/src/main/java/com/example/cxxgame/MainActivity.java
+          test -f app/src/main/java/com/example/cxxgame/MainActivity.java
+
+          test -f app/src/main/java/org/libsdl/app/SDLActivity.java
 
 
-          test -f \
-            app/src/main/java/org/libsdl/app/SDLActivity.java
 
 
       # =====================================================
       # Build APK
       # =====================================================
-      - name: Build APK
-        shell: bash
-        run: |
-          set -e
 
-          gradle wrapper \
-            --gradle-version 8.5
+      - name: Build APK
+
+        shell: bash
+
+        run: |
+
+
+          gradle wrapper --gradle-version 8.5
+
 
           chmod +x gradlew
 
-          ./gradlew \
-            :app:clean \
-            :app:assembleDebug \
-            --warning-mode summary \
-            --stacktrace
+
+          ./gradlew :app:clean :app:assembleDebug --warning-mode summary
 
 
-      # =====================================================
-      # Upload APK
-      # =====================================================
+
+
       - name: Upload APK
+
         uses: actions/upload-artifact@v4
+
         with:
-          name: app-debug
+
+          name: app-debug-${{ matrix.abi }}
+
           path: app/build/outputs/apk/debug/app-debug.apk
-          if-no-files-found: error
