@@ -1,14 +1,66 @@
 name: Build Android APK
 
-on: [push]
+on:
+  push:
+  workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
     steps:
+
+      # =====================================================
+      # Checkout
+      # =====================================================
+
       - name: Checkout repository
         uses: actions/checkout@v4
+
+
+      # =====================================================
+      # Java
+      # =====================================================
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+
+      # =====================================================
+      # Android SDK
+      # =====================================================
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+
+      # =====================================================
+      # Gradle
+      # =====================================================
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v3
+        with:
+          gradle-version: "8.5"
+
+
+      # =====================================================
+      # Install Android NDK
+      # =====================================================
+
+      - name: Install Android NDK
+        shell: bash
+        run: |
+          sdkmanager --install "ndk;25.1.8937393"
+          sdkmanager --install "cmake;3.22.1"
+
+
+      # =====================================================
+      # Download SDL2
+      # =====================================================
 
       - name: Download SDL2 and SDL2_image
         shell: bash
@@ -17,25 +69,24 @@ jobs:
 
           curl -L -o sdl2.tar.gz \
             https://github.com/libsdl-org/SDL/releases/download/release-2.28.5/SDL2-2.28.5.tar.gz
+
           tar -xzf sdl2.tar.gz
           rm -rf SDL2
           mv SDL2-2.28.5 SDL2
           rm sdl2.tar.gz
 
           curl -L -o sdl2_image.tar.gz \
-            https://github.com/libsdl-org/SDL_image/releases/download/release-2.6.3/SDL2_image-2.6.3.tar.gz
+            https://github.com/libsdl-org/SDL_image/releases/download/release-2.8.1/SDL2_image-2.8.1.tar.gz
+
           tar -xzf sdl2_image.tar.gz
           rm -rf SDL2_image
-          mv SDL2_image-2.6.3 SDL2_image
+          mv SDL2_image-2.8.1 SDL2_image
           rm sdl2_image.tar.gz
 
-          mkdir -p SDL2_headers/SDL2
 
-          cp SDL2/include/*.h SDL2_headers/
-          cp SDL2/include/*.h SDL2_headers/SDL2/
-
-          cp SDL2_image/*.h SDL2_headers/ 2>/dev/null || true
-          cp SDL2_image/*.h SDL2_headers/SDL2/ 2>/dev/null || true
+      # =====================================================
+      # Copy SDL2 Java files
+      # =====================================================
 
       - name: Copy SDL2 Java files
         shell: bash
@@ -46,35 +97,138 @@ jobs:
             app/src/main/cpp/SDL2/android-project/app/src/main/java/org/libsdl/app/. \
             app/src/main/java/org/libsdl/app/
 
+
+      # =====================================================
+      # Build OpenSSL for Android arm64-v8a
+      # =====================================================
+
+      - name: Build OpenSSL for Android arm64-v8a
+        shell: bash
+        run: |
+          set -e
+
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            perl \
+            make \
+            curl \
+            tar
+
+          export ANDROID_NDK_HOME=$ANDROID_HOME/ndk/25.1.8937393
+          export TOOLCHAIN=$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64
+
+          export PATH=$TOOLCHAIN/bin:$PATH
+
+          cd /tmp
+
+          curl -L -o openssl.tar.gz \
+            https://www.openssl.org/source/openssl-3.0.15.tar.gz
+
+          tar -xzf openssl.tar.gz
+
+          cd openssl-3.0.15
+
+          ./Configure android-arm64 \
+            -D__ANDROID_API__=23 \
+            no-shared \
+            no-tests \
+            --prefix=$GITHUB_WORKSPACE/app/src/main/cpp/openssl/arm64-v8a
+
+          make -j$(nproc)
+
+          make install_sw
+
+
+      # =====================================================
+      # Verify OpenSSL output
+      # =====================================================
+
+      - name: Verify OpenSSL files
+        shell: bash
+        run: |
+          OPENSSL_DIR=app/src/main/cpp/openssl/arm64-v8a
+
+          echo "Checking OpenSSL installation..."
+
+          test -f "$OPENSSL_DIR/include/openssl/ssl.h"
+          test -f "$OPENSSL_DIR/lib64/libssl.a" -o \
+            -f "$OPENSSL_DIR/lib/libssl.a"
+
+          test -f "$OPENSSL_DIR/lib64/libcrypto.a" -o \
+            -f "$OPENSSL_DIR/lib/libcrypto.a"
+
+          echo "OpenSSL files:"
+          find "$OPENSSL_DIR" -type f | sort
+
+
+      # =====================================================
+      # Normalize OpenSSL library directory
+      #
+      # Your CMakeLists expects:
+      # openssl/arm64-v8a/lib/libssl.a
+      # openssl/arm64-v8a/lib/libcrypto.a
+      # =====================================================
+
+      - name: Normalize OpenSSL library paths
+        shell: bash
+        run: |
+          set -e
+
+          OPENSSL_DIR=app/src/main/cpp/openssl/arm64-v8a
+
+          mkdir -p "$OPENSSL_DIR/lib"
+
+          if [ -f "$OPENSSL_DIR/lib64/libssl.a" ]; then
+            cp "$OPENSSL_DIR/lib64/libssl.a" \
+              "$OPENSSL_DIR/lib/libssl.a"
+          fi
+
+          if [ -f "$OPENSSL_DIR/lib64/libcrypto.a" ]; then
+            cp "$OPENSSL_DIR/lib64/libcrypto.a" \
+              "$OPENSSL_DIR/lib/libcrypto.a"
+          fi
+
+          echo "Final OpenSSL structure:"
+          find "$OPENSSL_DIR" -type f | sort
+
+
+      # =====================================================
+      # Verify required Java files
+      # =====================================================
+
       - name: Verify Java files
         shell: bash
         run: |
           test -f app/src/main/java/com/example/cxxgame/MainActivity.java
           test -f app/src/main/java/org/libsdl/app/SDLActivity.java
 
-      - name: Set up Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: "17"
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v3
-        with:
-          gradle-version: "8.5"
+      # =====================================================
+      # Build APK
+      # =====================================================
 
       - name: Build APK
         shell: bash
         run: |
           gradle wrapper --gradle-version 8.5
+
           chmod +x gradlew
-          ./gradlew :app:clean :app:assembleDebug --warning-mode summary
+
+          ./gradlew \
+            :app:clean \
+            :app:assembleDebug \
+            --warning-mode summary \
+            --stacktrace
+
+
+      # =====================================================
+      # Upload APK
+      # =====================================================
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: app-debug
           path: app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
