@@ -19,8 +19,18 @@ jobs:
           - x86_64
 
     steps:
+
+      # =====================================================
+      # Checkout
+      # =====================================================
+
       - name: Checkout repository
         uses: actions/checkout@v4
+
+
+      # =====================================================
+      # Java
+      # =====================================================
 
       - name: Setup Java
         uses: actions/setup-java@v4
@@ -28,155 +38,197 @@ jobs:
           distribution: temurin
           java-version: 17
 
+
+      # =====================================================
+      # Android SDK
+      # =====================================================
+
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
       - name: Accept SDK licenses
         run: yes | sdkmanager --licenses || true
 
+
+      # =====================================================
+      # Gradle
+      # =====================================================
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
+        with:
+          gradle-version: 8.5
+
+
+      # =====================================================
+      # Android NDK / CMake
+      # =====================================================
+
       - name: Install NDK and CMake
         run: |
           sdkmanager \
             "platform-tools" \
             "platforms;android-33" \
-            "ndk;27.0.12077973" \
+            "ndk;25.1.8937393" \
             "cmake;3.22.1"
 
-      # =====================================================
-      # Install tools required to build OpenSSL
-      # =====================================================
-
-      - name: Install OpenSSL build dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            perl \
-            make \
-            gcc \
-            g++ \
-            git
 
       # =====================================================
-      # Build OpenSSL for current ABI
+      # Build OpenSSL 1.1.1w
       # =====================================================
 
-      - name: Build OpenSSL
+      - name: Build OpenSSL 1.1.1w (${{ matrix.abi }})
         shell: bash
         run: |
           set -e
 
-          OPENSSL_VERSION="3.3.2"
-          NDK="$ANDROID_NDK_HOME"
-          API=24
+          git clone \
+            --branch OpenSSL_1_1_1w \
+            --depth 1 \
+            https://github.com/openssl/openssl.git openssl
 
-          echo "Building OpenSSL for ABI: ${{ matrix.abi }}"
-          echo "NDK: $NDK"
+          cd openssl
 
-          rm -rf openssl-source
+          export API=23
 
-          curl -L \
-            "https://www.openssl.org/source/openssl-${OPENSSL_VERSION}.tar.gz" \
-            -o openssl.tar.gz
+          export TOOLCHAIN="$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin"
 
-          tar -xzf openssl.tar.gz
-          mv "openssl-${OPENSSL_VERSION}" openssl-source
+          export PATH="$TOOLCHAIN:$PATH"
 
-          cd openssl-source
+          ABI="${{ matrix.abi }}"
 
-          case "${{ matrix.abi }}" in
+          PREFIX="$GITHUB_WORKSPACE/app/src/main/cpp/openssl/$ABI"
 
-            arm64-v8a)
-              TARGET="android-arm64"
-              TOOLCHAIN="$NDK/toolchains/llvm/prebuilt/linux-x86_64"
-              export PATH="$TOOLCHAIN/bin:$PATH"
-              export CROSS_COMPILE="aarch64-linux-android-"
-              ;;
+          mkdir -p "$PREFIX"
 
-            armeabi-v7a)
-              TARGET="android-arm"
-              TOOLCHAIN="$NDK/toolchains/llvm/prebuilt/linux-x86_64"
-              export PATH="$TOOLCHAIN/bin:$PATH"
-              export CROSS_COMPILE="armv7a-linux-androideabi-"
-              ;;
+          echo "========================================"
+          echo "ABI=$ABI"
+          echo "PREFIX=$PREFIX"
+          echo "========================================"
 
-            x86)
-              TARGET="android-x86"
-              TOOLCHAIN="$NDK/toolchains/llvm/prebuilt/linux-x86_64"
-              export PATH="$TOOLCHAIN/bin:$PATH"
-              export CROSS_COMPILE="i686-linux-android-"
-              ;;
+          if [ "$ABI" = "arm64-v8a" ]; then
 
-            x86_64)
-              TARGET="android-x86_64"
-              TOOLCHAIN="$NDK/toolchains/llvm/prebuilt/linux-x86_64"
-              export PATH="$TOOLCHAIN/bin:$PATH"
-              export CROSS_COMPILE="x86_64-linux-android-"
-              ;;
+            perl Configure android-arm64 \
+              --cross-compile-prefix=aarch64-linux-android23- \
+              -D__ANDROID_API__=$API \
+              no-shared \
+              no-tests \
+              no-engine \
+              no-comp \
+              no-async \
+              --prefix="$PREFIX"
 
-            *)
-              echo "Unsupported ABI: ${{ matrix.abi }}"
-              exit 1
-              ;;
-          esac
+          elif [ "$ABI" = "armeabi-v7a" ]; then
 
-          export ANDROID_NDK_ROOT="$NDK"
-          export ANDROID_NDK_HOME="$NDK"
+            perl Configure android-arm \
+              --cross-compile-prefix=arm-linux-androideabi23- \
+              -D__ANDROID_API__=$API \
+              no-shared \
+              no-tests \
+              no-engine \
+              no-comp \
+              no-async \
+              --prefix="$PREFIX"
 
-          ./Configure "$TARGET" \
-            -D__ANDROID_API__=$API \
-            no-shared \
-            no-tests \
-            no-apps \
-            no-asm \
-            --prefix="$GITHUB_WORKSPACE/app/src/main/cpp/openssl/${{ matrix.abi }}"
+          elif [ "$ABI" = "x86" ]; then
+
+            perl Configure android-x86 \
+              --cross-compile-prefix=i686-linux-android23- \
+              -D__ANDROID_API__=$API \
+              no-shared \
+              no-tests \
+              no-engine \
+              no-comp \
+              no-async \
+              --prefix="$PREFIX"
+
+          elif [ "$ABI" = "x86_64" ]; then
+
+            perl Configure android-x86_64 \
+              --cross-compile-prefix=x86_64-linux-android23- \
+              -D__ANDROID_API__=$API \
+              no-shared \
+              no-tests \
+              no-engine \
+              no-comp \
+              no-async \
+              --prefix="$PREFIX"
+
+          else
+
+            echo "Unsupported ABI: $ABI"
+            exit 1
+
+          fi
 
           make -j"$(nproc)"
+
           make install_sw
 
-          cd "$GITHUB_WORKSPACE"
-
-          echo "OpenSSL build complete."
 
       # =====================================================
       # Verify OpenSSL
       # =====================================================
 
-      - name: Verify OpenSSL
+      - name: Verify OpenSSL (${{ matrix.abi }})
         shell: bash
         run: |
           set -e
 
           OPENSSL_DIR="app/src/main/cpp/openssl/${{ matrix.abi }}"
 
-          echo "Checking OpenSSL for ABI: ${{ matrix.abi }}"
-          echo "Directory: $OPENSSL_DIR"
-
-          test -d "$OPENSSL_DIR/include"
-          test -d "$OPENSSL_DIR/lib"
+          echo "Checking:"
+          echo "$OPENSSL_DIR"
 
           test -f "$OPENSSL_DIR/lib/libssl.a"
           test -f "$OPENSSL_DIR/lib/libcrypto.a"
 
-          echo ""
-          echo "OpenSSL files:"
-          ls -lh "$OPENSSL_DIR/lib/"
+          test -d "$OPENSSL_DIR/include/openssl"
 
           echo ""
-          echo "OpenSSL include:"
-          ls "$OPENSSL_DIR/include/openssl" | head
+          echo "OpenSSL libraries:"
+          ls -lh "$OPENSSL_DIR/lib/libssl.a"
+          ls -lh "$OPENSSL_DIR/lib/libcrypto.a"
+
+          echo ""
+          echo "OpenSSL verification successful."
+
 
       # =====================================================
-      # Build Android APK
+      # Download SDL2 / SDL2_image
       # =====================================================
 
-      - name: Build APK
+      - name: Download SDL2 and SDL2_image
+        run: |
+          mkdir -p app/build/includes
+          mkdir -p app/build/libs
+
+
+      # =====================================================
+      # Build APK
+      # =====================================================
+
+      - name: Build APK for ${{ matrix.abi }}
         shell: bash
         run: |
-          chmod +x gradlew
+          echo "========================================"
+          echo "Building ABI: ${{ matrix.abi }}"
+          echo "========================================"
 
-          ./gradlew clean assembleDebug \
-            -PABI=${{ matrix.abi }} \
+          gradle clean assembleDebug \
+            -PABI="${{ matrix.abi }}" \
             --stacktrace
+
+
+      # =====================================================
+      # Show APK
+      # =====================================================
+
+      - name: Find APK
+        run: |
+          echo "Generated APK files:"
+          find app/build/outputs -type f -name "*.apk" -print
+
 
       # =====================================================
       # Upload APK
