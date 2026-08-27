@@ -15,8 +15,6 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "cxx-game-apk"
-
-include ':app'
 rootProject.name = "CXXGameApp"
+
 include ':app'
