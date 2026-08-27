@@ -38,7 +38,7 @@ FetchContent_MakeAvailable(SDL2_image)
 
 
 # =========================================================
-# Game Library
+# Game
 # =========================================================
 
 add_library(
@@ -50,7 +50,7 @@ add_library(
 
 
 # =========================================================
-# OpenSSL 1.1.1w
+# OpenSSL 1.1.1w Android
 # =========================================================
 
 if(NOT ANDROID_ABI)
@@ -76,7 +76,10 @@ elseif(ANDROID_ABI STREQUAL "x86_64")
 
 else()
 
-    message(FATAL_ERROR "Unsupported ABI ${ANDROID_ABI}")
+    message(
+        FATAL_ERROR
+        "Unsupported ABI ${ANDROID_ABI}"
+    )
 
 endif()
 
@@ -90,17 +93,21 @@ set(OPENSSL_SOURCE
     "${CMAKE_BINARY_DIR}/openssl-source"
 )
 
+
 set(OPENSSL_INCLUDE_DIR
     "${OPENSSL_ROOT}/include"
 )
+
 
 set(OPENSSL_LIB_DIR
     "${OPENSSL_ROOT}/lib"
 )
 
+
 set(OPENSSL_SSL
     "${OPENSSL_LIB_DIR}/libssl.a"
 )
+
 
 set(OPENSSL_CRYPTO
     "${OPENSSL_LIB_DIR}/libcrypto.a"
@@ -126,14 +133,19 @@ ExternalProject_Add(
     CONFIGURE_COMMAND
 
     perl ./Configure
+
     ${OPENSSL_TARGET}
+
     -D__ANDROID_API__=23
+
     no-shared
     no-async
     no-tests
     no-engine
     no-comp
+
     --prefix=${OPENSSL_ROOT}
+
 
 
     BUILD_COMMAND
@@ -141,21 +153,24 @@ ExternalProject_Add(
     make -j4
 
 
+
     INSTALL_COMMAND
 
     make install_sw
 
 
+
     BUILD_BYPRODUCTS
 
     ${OPENSSL_SSL}
+
     ${OPENSSL_CRYPTO}
 )
 
 
 
 # =========================================================
-# OpenSSL Libraries
+# OpenSSL Imported Targets
 # =========================================================
 
 add_library(
@@ -171,9 +186,6 @@ set_target_properties(
 
     IMPORTED_LOCATION
     ${OPENSSL_CRYPTO}
-
-    INTERFACE_INCLUDE_DIRECTORIES
-    ${OPENSSL_INCLUDE_DIR}
 )
 
 
@@ -191,9 +203,6 @@ set_target_properties(
 
     IMPORTED_LOCATION
     ${OPENSSL_SSL}
-
-    INTERFACE_INCLUDE_DIRECTORIES
-    ${OPENSSL_INCLUDE_DIR}
 
     INTERFACE_LINK_LIBRARIES
     openssl_crypto
@@ -221,7 +230,7 @@ add_dependencies(
 
 
 # =========================================================
-# Include directories
+# Includes
 # =========================================================
 
 target_include_directories(
@@ -239,7 +248,7 @@ target_include_directories(
 
 
 # =========================================================
-# Compile options
+# Defines
 # =========================================================
 
 target_compile_definitions(
@@ -253,7 +262,7 @@ target_compile_definitions(
 
 
 # =========================================================
-# Android system libraries
+# Android libraries
 # =========================================================
 
 find_library(LOG_LIB log)
@@ -265,7 +274,7 @@ find_library(M_LIB m)
 
 
 # =========================================================
-# Link libraries
+# Link
 # =========================================================
 
 target_link_libraries(
@@ -293,10 +302,6 @@ target_link_libraries(
 )
 
 
-
-# =========================================================
-# Status
-# =========================================================
 
 message(
     STATUS
@@ -326,6 +331,11 @@ message(
 message(
     STATUS
     "OpenSSL 1.1.1w enabled"
+)
+
+message(
+    STATUS
+    "Static OpenSSL enabled"
 )
 
 message(
