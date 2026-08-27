@@ -32,25 +32,159 @@ jobs:
         uses: android-actions/setup-android@v3
 
       - name: Accept SDK licenses
-        run: yes | sdkmanager --licenses
+        run: yes | sdkmanager --licenses || true
 
-      - name: Install NDK & CMake
+      - name: Install NDK and CMake
         run: |
-          sdkmanager "ndk;27.0.12077973" "cmake;3.22.1"
+          sdkmanager \
+            "platform-tools" \
+            "platforms;android-33" \
+            "ndk;27.0.12077973" \
+            "cmake;3.22.1"
+
+      # =====================================================
+      # Install tools required to build OpenSSL
+      # =====================================================
+
+      - name: Install OpenSSL build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            perl \
+            make \
+            gcc \
+            g++ \
+            git
+
+      # =====================================================
+      # Build OpenSSL for current ABI
+      # =====================================================
+
+      - name: Build OpenSSL
+        shell: bash
+        run: |
+          set -e
+
+          OPENSSL_VERSION="3.3.2"
+          NDK="$ANDROID_NDK_HOME"
+          API=24
+
+          echo "Building OpenSSL for ABI: ${{ matrix.abi }}"
+          echo "NDK: $NDK"
+
+          rm -rf openssl-source
+
+          curl -L \
+            "https://www.openssl.org/source/openssl-${OPENSSL_VERSION}.tar.gz" \
+            -o openssl.tar.gz
+
+          tar -xzf openssl.tar.gz
+          mv "openssl-${OPENSSL_VERSION}" openssl-source
+
+          cd openssl-source
+
+          case "${{ matrix.abi }}" in
+
+            arm64-v8a)
+              TARGET="android-arm64"
+              TOOLCHAIN="$NDK/toolchains/llvm/prebuilt/linux-x86_64"
+              export PATH="$TOOLCHAIN/bin:$PATH"
+              export CROSS_COMPILE="aarch64-linux-android-"
+              ;;
+
+            armeabi-v7a)
+              TARGET="android-arm"
+              TOOLCHAIN="$NDK/toolchains/llvm/prebuilt/linux-x86_64"
+              export PATH="$TOOLCHAIN/bin:$PATH"
+              export CROSS_COMPILE="armv7a-linux-androideabi-"
+              ;;
+
+            x86)
+              TARGET="android-x86"
+              TOOLCHAIN="$NDK/toolchains/llvm/prebuilt/linux-x86_64"
+              export PATH="$TOOLCHAIN/bin:$PATH"
+              export CROSS_COMPILE="i686-linux-android-"
+              ;;
+
+            x86_64)
+              TARGET="android-x86_64"
+              TOOLCHAIN="$NDK/toolchains/llvm/prebuilt/linux-x86_64"
+              export PATH="$TOOLCHAIN/bin:$PATH"
+              export CROSS_COMPILE="x86_64-linux-android-"
+              ;;
+
+            *)
+              echo "Unsupported ABI: ${{ matrix.abi }}"
+              exit 1
+              ;;
+          esac
+
+          export ANDROID_NDK_ROOT="$NDK"
+          export ANDROID_NDK_HOME="$NDK"
+
+          ./Configure "$TARGET" \
+            -D__ANDROID_API__=$API \
+            no-shared \
+            no-tests \
+            no-apps \
+            no-asm \
+            --prefix="$GITHUB_WORKSPACE/app/src/main/cpp/openssl/${{ matrix.abi }}"
+
+          make -j"$(nproc)"
+          make install_sw
+
+          cd "$GITHUB_WORKSPACE"
+
+          echo "OpenSSL build complete."
+
+      # =====================================================
+      # Verify OpenSSL
+      # =====================================================
 
       - name: Verify OpenSSL
+        shell: bash
         run: |
-          ls -R app/src/main/cpp/openssl || true
-          test -f app/src/main/cpp/openssl/${{ matrix.abi }}/lib/libssl.a
+          set -e
+
+          OPENSSL_DIR="app/src/main/cpp/openssl/${{ matrix.abi }}"
+
+          echo "Checking OpenSSL for ABI: ${{ matrix.abi }}"
+          echo "Directory: $OPENSSL_DIR"
+
+          test -d "$OPENSSL_DIR/include"
+          test -d "$OPENSSL_DIR/lib"
+
+          test -f "$OPENSSL_DIR/lib/libssl.a"
+          test -f "$OPENSSL_DIR/lib/libcrypto.a"
+
+          echo ""
+          echo "OpenSSL files:"
+          ls -lh "$OPENSSL_DIR/lib/"
+
+          echo ""
+          echo "OpenSSL include:"
+          ls "$OPENSSL_DIR/include/openssl" | head
+
+      # =====================================================
+      # Build Android APK
+      # =====================================================
 
       - name: Build APK
+        shell: bash
         run: |
           chmod +x gradlew
+
           ./gradlew clean assembleDebug \
-            -PABI=${{ matrix.abi }}
+            -PABI=${{ matrix.abi }} \
+            --stacktrace
+
+      # =====================================================
+      # Upload APK
+      # =====================================================
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: apk-${{ matrix.abi }}
           path: app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
