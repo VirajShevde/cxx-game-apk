@@ -2,16 +2,15 @@ name: Build Android APK
 
 on:
   push:
-
+    branches: [ main ]
+  workflow_dispatch:
 
 jobs:
-
   build:
-
     runs-on: ubuntu-latest
 
-
     strategy:
+      fail-fast: false
       matrix:
         abi:
           - arm64-v8a
@@ -19,221 +18,39 @@ jobs:
           - x86
           - x86_64
 
-
     steps:
-
       - name: Checkout repository
         uses: actions/checkout@v4
-
-
-
-      - name: Setup Android
-        uses: android-actions/setup-android@v3
-
-
 
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: "17"
+          java-version: 17
 
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
 
+      - name: Accept SDK licenses
+        run: yes | sdkmanager --licenses
 
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v3
-        with:
-          gradle-version: "8.5"
-
-
-
-      # =====================================================
-      # OpenSSL 1.1.1w
-      # =====================================================
-
-      - name: Build OpenSSL 1.1.1w (${{ matrix.abi }})
-        shell: bash
+      - name: Install NDK & CMake
         run: |
+          sdkmanager "ndk;27.0.12077973" "cmake;3.22.1"
 
-          set -e
-
-
-          git clone \
-            --branch OpenSSL_1_1_1w \
-            --depth 1 \
-            https://github.com/openssl/openssl.git openssl
-
-
-          cd openssl
-
-
-
-          export API=23
-
-
-          export TOOLCHAIN=$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin
-
-
-          export PATH=$TOOLCHAIN:$PATH
-
-
-
-          ABI=${{ matrix.abi }}
-
-
-          PREFIX=$GITHUB_WORKSPACE/app/src/main/cpp/openssl/$ABI
-
-
-
-          mkdir -p "$PREFIX"
-
-
-
-          echo "ABI=$ABI"
-          echo "PREFIX=$PREFIX"
-
-
-
-          if [ "$ABI" = "arm64-v8a" ]; then
-
-              perl Configure android-arm64 \
-                --cross-compile-prefix=aarch64-linux-android23- \
-                -D__ANDROID_API__=$API \
-                no-shared \
-                no-tests \
-                no-engine \
-                no-comp \
-                no-async \
-                --prefix=$PREFIX
-
-
-
-          elif [ "$ABI" = "armeabi-v7a" ]; then
-
-              perl Configure android-arm \
-                --cross-compile-prefix=arm-linux-androideabi23- \
-                -D__ANDROID_API__=$API \
-                no-shared \
-                no-tests \
-                no-engine \
-                no-comp \
-                no-async \
-                --prefix=$PREFIX
-
-
-
-          elif [ "$ABI" = "x86" ]; then
-
-              perl Configure android-x86 \
-                --cross-compile-prefix=i686-linux-android23- \
-                -D__ANDROID_API__=$API \
-                no-shared \
-                no-tests \
-                no-engine \
-                no-comp \
-                no-async \
-                --prefix=$PREFIX
-
-
-
-          elif [ "$ABI" = "x86_64" ]; then
-
-              perl Configure android-x86_64 \
-                --cross-compile-prefix=x86_64-linux-android23- \
-                -D__ANDROID_API__=$API \
-                no-shared \
-                no-tests \
-                no-engine \
-                no-comp \
-                no-async \
-                --prefix=$PREFIX
-
-
-          else
-
-              echo "Unsupported ABI"
-              exit 1
-
-          fi
-
-
-
-          make -j$(nproc)
-
-
-          make install_sw
-
-
-
-
-      # =====================================================
-      # SDL2 + SDL2_image
-      # =====================================================
-
-      - name: Download SDL2 and SDL2_image
-        shell: bash
+      - name: Verify OpenSSL
         run: |
-
-          cd app/src/main/cpp
-
-
-          curl -L -o sdl2.tar.gz \
-          https://github.com/libsdl-org/SDL/releases/download/release-2.28.5/SDL2-2.28.5.tar.gz
-
-
-          tar -xzf sdl2.tar.gz
-
-          mv SDL2-2.28.5 SDL2
-
-          rm sdl2.tar.gz
-
-
-
-          curl -L -o sdl2_image.tar.gz \
-          https://github.com/libsdl-org/SDL_image/releases/download/release-2.8.1/SDL2_image-2.8.1.tar.gz
-
-
-          tar -xzf sdl2_image.tar.gz
-
-          mv SDL2_image-2.8.1 SDL2_image
-
-          rm sdl2_image.tar.gz
-
-
-
-
-      - name: Copy SDL Java files
-        shell: bash
-        run: |
-
-          mkdir -p app/src/main/java/org/libsdl/app
-
-
-          cp -R \
-          app/src/main/cpp/SDL2/android-project/app/src/main/java/org/libsdl/app/. \
-          app/src/main/java/org/libsdl/app/
-
-
-
+          ls -R app/src/main/cpp/openssl || true
+          test -f app/src/main/cpp/openssl/${{ matrix.abi }}/lib/libssl.a
 
       - name: Build APK
-        shell: bash
         run: |
-
-          gradle wrapper --gradle-version 8.5
-
           chmod +x gradlew
-
-          ./gradlew :app:clean :app:assembleDebug --warning-mode summary
-
-
-
+          ./gradlew clean assembleDebug \
+            -PABI=${{ matrix.abi }}
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
-
         with:
-
-          name: app-debug-${{ matrix.abi }}
-
-          path: app/build/outputs/apk/debug/app-debug.apk
+          name: apk-${{ matrix.abi }}
+          path: app/build/outputs/apk/debug/*.apk
