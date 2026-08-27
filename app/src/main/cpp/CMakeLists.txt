@@ -35,7 +35,7 @@ FetchContent_MakeAvailable(SDL2_image)
 
 
 # =========================================================
-# Game library
+# Game
 # =========================================================
 
 add_library(
@@ -47,7 +47,7 @@ add_library(
 
 
 # =========================================================
-# OpenSSL Android
+# OpenSSL Setup
 # =========================================================
 
 if(NOT ANDROID_ABI)
@@ -82,6 +82,7 @@ else()
 endif()
 
 
+
 set(OPENSSL_SOURCE
     ${CMAKE_BINARY_DIR}/openssl-source
 )
@@ -105,7 +106,7 @@ set(OPENSSL_CRYPTO
 
 
 # =========================================================
-# Build OpenSSL 1.1.1w
+# OpenSSL Build
 # =========================================================
 
 ExternalProject_Add(
@@ -150,10 +151,7 @@ ExternalProject_Add(
     no-comp
 
     --prefix=${OPENSSL_ROOT}
-
-
-
-    BUILD_COMMAND
+        BUILD_COMMAND
 
     ${CMAKE_COMMAND} -E chdir
 
@@ -184,7 +182,7 @@ ExternalProject_Add(
 
 
 # =========================================================
-# Imported OpenSSL libraries
+# Imported OpenSSL Libraries
 # =========================================================
 
 add_library(
@@ -196,11 +194,13 @@ add_library(
 set_target_properties(
     openssl_crypto
     PROPERTIES
+
     IMPORTED_LOCATION
     ${OPENSSL_CRYPTO}
 )
 
 
+
 add_library(
     openssl_ssl
     STATIC
@@ -208,26 +208,33 @@ add_library(
 )
 
 
+
 set_target_properties(
     openssl_ssl
+
     PROPERTIES
+
     IMPORTED_LOCATION
     ${OPENSSL_SSL}
+
     INTERFACE_LINK_LIBRARIES
     openssl_crypto
 )
 
 
+
 add_dependencies(
     openssl_crypto
     openssl_build
 )
+
 
 add_dependencies(
     openssl_ssl
     openssl_build
 )
 
+
 add_dependencies(
     cxxgame
     openssl_build
@@ -236,11 +243,13 @@ add_dependencies(
 
 
 # =========================================================
-# Includes
+# Include directories
 # =========================================================
 
 target_include_directories(
+
     cxxgame
+
     PRIVATE
 
     ${OPENSSL_INCLUDE_DIR}
@@ -255,28 +264,35 @@ target_include_directories(
 
 
 # =========================================================
-# Defines
+# Compile Definitions
 # =========================================================
 
 target_compile_definitions(
+
     cxxgame
+
     PRIVATE
 
     GAME80_FORCE_OPENSSL_TLS=1
 
     OPENSSL_API_COMPAT=0x10100000L
+
 )
 
 
 
 # =========================================================
-# Android libraries
+# Android Libraries
 # =========================================================
 
 find_library(LOG_LIB log)
+
 find_library(ANDROID_LIB android)
+
 find_library(DL_LIB dl)
+
 find_library(Z_LIB z)
+
 find_library(M_LIB m)
 
 
@@ -308,72 +324,19 @@ target_link_libraries(
     ${M_LIB}
 
     c++_shared
+
 )
 
 
 
-message(STATUS "==============================")
+# =========================================================
+# Status
+# =========================================================
+
+message(STATUS "================================")
 message(STATUS "Game57 Android Build")
 message(STATUS "ABI: ${ANDROID_ABI}")
-message(STATUS "OpenSSL 1.1.1w static")
-message(STATUS "==============================")
-
-
-    CONFIGURE_COMMAND
-
-    ${CMAKE_COMMAND} -E env
-
-    PATH=${ANDROID_NDK}/toolchains/llvm/prebuilt/linux-x86_64/bin:$ENV{PATH}
-
-    ANDROID_NDK_ROOT=${ANDROID_NDK}
-
-    ${CMAKE_COMMAND} -E chdir
-
-    ${OPENSSL_SOURCE}
-
-    perl Configure
-
-    ${OPENSSL_TARGET}
-
-    --cross-compile-prefix=${OPENSSL_TRIPLE}23-
-
-    -D__ANDROID_API__=23
-
-    no-shared
-    no-async
-    no-tests
-    no-apps
-    no-engine
-    no-comp
-
-    --prefix=${OPENSSL_ROOT}
-
-
-
-    BUILD_COMMAND
-
-    ${CMAKE_COMMAND} -E chdir
-
-    ${OPENSSL_SOURCE}
-
-    make -j4
-
-
-
-    INSTALL_COMMAND
-
-    ${CMAKE_COMMAND} -E chdir
-
-    ${OPENSSL_SOURCE}
-
-    make install_sw
-
-
-
-    BUILD_BYPRODUCTS
-
-    ${OPENSSL_SSL}
-
-    ${OPENSSL_CRYPTO}
-
-)
+message(STATUS "SDL2 enabled")
+message(STATUS "SDL2_image enabled")
+message(STATUS "OpenSSL 1.1.1w static enabled")
+message(STATUS "================================")
