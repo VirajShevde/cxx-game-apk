@@ -2,6 +2,8 @@ plugins {
     id 'com.android.application'
 }
 
+def selectedAbi = project.findProperty("ABI") ?: "arm64-v8a"
+
 android {
     namespace 'com.example.cxxgame'
     compileSdk 33
@@ -19,30 +21,21 @@ android {
 
                 arguments "-DANDROID_STL=c++_shared",
                           "-DSDL2_INCLUDE_DIR=${project.buildDir}/includes/SDL2",
-                          "-DSDL2_LIB_DIR=${project.buildDir}/libs/SDL2"
+                          "-DSDL2_LIB_DIR=${project.buildDir}/libs/SDL2",
+                          "-DANDROID_ABI=${selectedAbi}"
             }
         }
-    }
 
-    // GitHub Actions passes:
-    // -PABI=arm64-v8a
-    // -PABI=armeabi-v7a
-    // -PABI=x86
-    // -PABI=x86_64
-
-    def selectedAbi = project.findProperty("ABI")
-
-    if (selectedAbi != null) {
         ndk {
             abiFilters selectedAbi
-        }
-    } else {
-        ndk {
-            abiFilters "arm64-v8a"
         }
     }
 
     buildTypes {
+        debug {
+            minifyEnabled false
+        }
+
         release {
             minifyEnabled false
         }
@@ -52,10 +45,6 @@ android {
         cmake {
             path file("src/main/cpp/CMakeLists.txt")
             version "3.22.1"
-
-            if (selectedAbi != null) {
-                arguments "-DANDROID_ABI=${selectedAbi}"
-            }
         }
     }
 }
