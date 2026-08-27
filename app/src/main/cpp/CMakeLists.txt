@@ -9,9 +9,9 @@ include(FetchContent)
 include(ExternalProject)
 
 
-# ============================
+# =========================================================
 # SDL2
-# ============================
+# =========================================================
 
 FetchContent_Declare(
     SDL2
@@ -22,9 +22,9 @@ FetchContent_MakeAvailable(SDL2)
 
 
 
-# ============================
+# =========================================================
 # SDL2_image
-# ============================
+# =========================================================
 
 FetchContent_Declare(
     SDL2_image
@@ -35,9 +35,9 @@ FetchContent_MakeAvailable(SDL2_image)
 
 
 
-# ============================
+# =========================================================
 # Game
-# ============================
+# =========================================================
 
 add_library(
     cxxgame
@@ -47,9 +47,9 @@ add_library(
 
 
 
-# ============================
-# OpenSSL 1.1.1w
-# ============================
+# =========================================================
+# OpenSSL
+# =========================================================
 
 if(NOT ANDROID_ABI)
     message(FATAL_ERROR "ANDROID_ABI missing")
@@ -59,18 +59,22 @@ endif()
 if(ANDROID_ABI STREQUAL "arm64-v8a")
 
     set(OPENSSL_TARGET android-arm64)
+    set(OPENSSL_TRIPLE aarch64-linux-android)
 
 elseif(ANDROID_ABI STREQUAL "armeabi-v7a")
 
     set(OPENSSL_TARGET android-arm)
+    set(OPENSSL_TRIPLE armv7a-linux-androideabi)
 
 elseif(ANDROID_ABI STREQUAL "x86")
 
     set(OPENSSL_TARGET android-x86)
+    set(OPENSSL_TRIPLE i686-linux-android)
 
 elseif(ANDROID_ABI STREQUAL "x86_64")
 
     set(OPENSSL_TARGET android-x86_64)
+    set(OPENSSL_TRIPLE x86_64-linux-android)
 
 else()
 
@@ -80,40 +84,35 @@ endif()
 
 
 
-set(
-    OPENSSL_SOURCE
+set(OPENSSL_SOURCE
     ${CMAKE_BINARY_DIR}/openssl-source
 )
 
 
-set(
-    OPENSSL_ROOT
+set(OPENSSL_ROOT
     ${CMAKE_BINARY_DIR}/openssl/${ANDROID_ABI}/install
 )
 
 
-set(
-    OPENSSL_INCLUDE_DIR
+set(OPENSSL_INCLUDE_DIR
     ${OPENSSL_ROOT}/include
 )
 
 
-set(
-    OPENSSL_SSL
+set(OPENSSL_SSL
     ${OPENSSL_ROOT}/lib/libssl.a
 )
 
 
-set(
-    OPENSSL_CRYPTO
+set(OPENSSL_CRYPTO
     ${OPENSSL_ROOT}/lib/libcrypto.a
 )
 
 
 
-# ============================
+# =========================================================
 # OpenSSL Build
-# ============================
+# =========================================================
 
 ExternalProject_Add(
 
@@ -133,6 +132,16 @@ ExternalProject_Add(
     CONFIGURE_COMMAND
 
     ${CMAKE_COMMAND} -E env
+
+    PATH=${ANDROID_NDK}/toolchains/llvm/prebuilt/linux-x86_64/bin:$ENV{PATH}
+
+    CC=${OPENSSL_TRIPLE}23-clang
+
+    CXX=${OPENSSL_TRIPLE}23-clang++
+
+    AR=${OPENSSL_TRIPLE}-ar
+
+    RANLIB=${OPENSSL_TRIPLE}-ranlib
 
     ANDROID_NDK_ROOT=${ANDROID_NDK}
 
@@ -186,9 +195,9 @@ ExternalProject_Add(
 
 
 
-# ============================
-# OpenSSL Imported Libraries
-# ============================
+# =========================================================
+# Imported OpenSSL
+# =========================================================
 
 add_library(
     openssl_crypto
@@ -196,10 +205,8 @@ add_library(
     IMPORTED
 )
 
-
 set_target_properties(
     openssl_crypto
-
     PROPERTIES
 
     IMPORTED_LOCATION
@@ -217,7 +224,6 @@ add_library(
 
 set_target_properties(
     openssl_ssl
-
     PROPERTIES
 
     IMPORTED_LOCATION
@@ -248,9 +254,9 @@ add_dependencies(
 
 
 
-# ============================
+# =========================================================
 # Includes
-# ============================
+# =========================================================
 
 target_include_directories(
     cxxgame
@@ -268,9 +274,9 @@ target_include_directories(
 
 
 
-# ============================
-# Definitions
-# ============================
+# =========================================================
+# Defines
+# =========================================================
 
 target_compile_definitions(
     cxxgame
@@ -284,25 +290,21 @@ target_compile_definitions(
 
 
 
-# ============================
+# =========================================================
 # Android Libraries
-# ============================
+# =========================================================
 
 find_library(LOG_LIB log)
-
 find_library(ANDROID_LIB android)
-
 find_library(DL_LIB dl)
-
 find_library(Z_LIB z)
-
 find_library(M_LIB m)
 
 
 
-# ============================
+# =========================================================
 # Link
-# ============================
+# =========================================================
 
 target_link_libraries(
 
@@ -332,14 +334,8 @@ target_link_libraries(
 
 
 
-# ============================
-# Status
-# ============================
-
-message(STATUS "================================")
+message(STATUS "==============================")
 message(STATUS "Game57 Android Build")
-message(STATUS "ABI: ${ANDROID_ABI}")
-message(STATUS "SDL2 enabled")
-message(STATUS "SDL2_image enabled")
-message(STATUS "OpenSSL 1.1.1w static enabled")
-message(STATUS "================================")
+message(STATUS "ABI ${ANDROID_ABI}")
+message(STATUS "OpenSSL 1.1.1w static")
+message(STATUS "==============================")
