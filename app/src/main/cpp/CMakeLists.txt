@@ -1,29 +1,16 @@
-cmake_minimum_required(VERSION 3.22.1)
-
-project(cxxgame)
-
-
-set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-
-
-
 # =========================================================
 # SDL2
 # =========================================================
 
 include(FetchContent)
 
-
 FetchContent_Declare(
     SDL2
     URL
-    https://github.com/libsdl-org/SDL/releases/download/release-2.28.5/SDL2-2.28.5.tar.gz
+    https://github.com/libsdl-org/SDL/releases/download/release-2.30.12/SDL2-2.30.12.tar.gz
 )
 
-
 FetchContent_MakeAvailable(SDL2)
-
 
 
 # =========================================================
@@ -34,6 +21,105 @@ FetchContent_Declare(
     SDL2_image
     URL
     https://github.com/libsdl-org/SDL_image/releases/download/release-2.8.1/SDL2_image-2.8.1.tar.gz
+)
+
+FetchContent_MakeAvailable(SDL2_image)
+
+
+# =========================================================
+# Game Library
+# =========================================================
+
+add_library(
+    cxxgame
+    SHARED
+    game57-4.cxx
+)
+
+
+# =========================================================
+# OpenSSL 1.1.1w
+# =========================================================
+
+if(NOT ANDROID_ABI)
+    message(FATAL_ERROR "ANDROID_ABI missing")
+endif()
+
+set(OPENSSL_ROOT
+    ${CMAKE_SOURCE_DIR}/openssl/${ANDROID_ABI}
+)
+
+set(OPENSSL_INCLUDE_DIR
+    ${OPENSSL_ROOT}/include
+)
+
+set(OPENSSL_SSL
+    ${OPENSSL_ROOT}/lib/libssl.a
+)
+
+set(OPENSSL_CRYPTO
+    ${OPENSSL_ROOT}/lib/libcrypto.a
+)
+
+
+if(NOT EXISTS ${OPENSSL_SSL})
+    message(FATAL_ERROR
+        "Missing OpenSSL ssl library: ${OPENSSL_SSL}"
+    )
+endif()
+
+if(NOT EXISTS ${OPENSSL_CRYPTO})
+    message(FATAL_ERROR
+        "Missing OpenSSL crypto library: ${OPENSSL_CRYPTO}"
+    )
+endif()
+
+
+add_library(openssl_crypto STATIC IMPORTED)
+
+set_target_properties(
+    openssl_crypto
+    PROPERTIES
+    IMPORTED_LOCATION ${OPENSSL_CRYPTO}
+)
+
+
+add_library(openssl_ssl STATIC IMPORTED)
+
+set_target_properties(
+    openssl_ssl
+    PROPERTIES
+    IMPORTED_LOCATION ${OPENSSL_SSL}
+    INTERFACE_LINK_LIBRARIES openssl_crypto
+)
+
+
+# =========================================================
+# Includes
+# =========================================================
+
+target_include_directories(
+    cxxgame
+    PRIVATE
+    ${OPENSSL_INCLUDE_DIR}
+
+    ${SDL2_SOURCE_DIR}
+    ${SDL2_SOURCE_DIR}/include
+
+    ${SDL2_image_SOURCE_DIR}
+    ${SDL2_image_SOURCE_DIR}/include
+)
+
+
+# =========================================================
+# Definitions
+# =========================================================
+
+target_compile_definitions(
+    cxxgame
+    PRIVATE
+    GAME80_FORCE_OPENSSL_TLS=1
+    OPENSSL_API_COMPAT=0x10100000L
 )
 
 
