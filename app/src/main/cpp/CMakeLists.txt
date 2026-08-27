@@ -20,6 +20,10 @@ FetchContent_Declare(
 
 FetchContent_MakeAvailable(SDL2)
 
+message(STATUS "SDL2 source directory: ${SDL2_SOURCE_DIR}")
+message(STATUS "SDL2 include directory: ${SDL2_SOURCE_DIR}/include")
+
+
 # =========================================================
 # SDL2_image
 # =========================================================
@@ -32,8 +36,9 @@ FetchContent_Declare(
 
 FetchContent_MakeAvailable(SDL2_image)
 
+
 # =========================================================
-# YOUR ORIGINAL SOURCE
+# YOUR SOURCE
 # =========================================================
 
 add_library(
@@ -42,21 +47,9 @@ add_library(
     game57-4.cxx
 )
 
+
 # =========================================================
 # OpenSSL
-#
-# Required directory:
-#
-# openssl/
-# ├── arm64-v8a/
-# ├── armeabi-v7a/
-# ├── x86_64/
-# └── x86/
-#
-# Each ABI must contain:
-# include/openssl/
-# lib/libssl.a
-# lib/libcrypto.a
 # =========================================================
 
 if(NOT ANDROID_ABI)
@@ -64,6 +57,7 @@ if(NOT ANDROID_ABI)
         "ANDROID_ABI is not defined. Use the Android NDK."
     )
 endif()
+
 
 set(OPENSSL_ROOT
     "${CMAKE_CURRENT_SOURCE_DIR}/openssl/${ANDROID_ABI}"
@@ -85,26 +79,27 @@ set(OPENSSL_CRYPTO
     "${OPENSSL_LIB_DIR}/libcrypto.a"
 )
 
+
 if(NOT EXISTS "${OPENSSL_INCLUDE_DIR}/openssl/ssl.h")
     message(FATAL_ERROR
-        "OpenSSL headers missing for ${ANDROID_ABI}:\n"
-        "${OPENSSL_INCLUDE_DIR}/openssl/ssl.h"
+        "OpenSSL headers missing:\n${OPENSSL_INCLUDE_DIR}"
     )
 endif()
+
 
 if(NOT EXISTS "${OPENSSL_SSL}")
     message(FATAL_ERROR
-        "libssl.a missing for ${ANDROID_ABI}:\n"
-        "${OPENSSL_SSL}"
+        "libssl.a missing:\n${OPENSSL_SSL}"
     )
 endif()
 
+
 if(NOT EXISTS "${OPENSSL_CRYPTO}")
     message(FATAL_ERROR
-        "libcrypto.a missing for ${ANDROID_ABI}:\n"
-        "${OPENSSL_CRYPTO}"
+        "libcrypto.a missing:\n${OPENSSL_CRYPTO}"
     )
 endif()
+
 
 add_library(openssl_crypto STATIC IMPORTED)
 
@@ -112,6 +107,7 @@ set_target_properties(openssl_crypto PROPERTIES
     IMPORTED_LOCATION "${OPENSSL_CRYPTO}"
     INTERFACE_INCLUDE_DIRECTORIES "${OPENSSL_INCLUDE_DIR}"
 )
+
 
 add_library(openssl_ssl STATIC IMPORTED)
 
@@ -121,23 +117,34 @@ set_target_properties(openssl_ssl PROPERTIES
     INTERFACE_LINK_LIBRARIES openssl_crypto
 )
 
+
 # =========================================================
 # Include paths
 # =========================================================
 
 target_include_directories(cxxgame PRIVATE
+
+    # OpenSSL
     "${OPENSSL_INCLUDE_DIR}"
+
+    # SDL2
+    "${SDL2_SOURCE_DIR}"
     "${SDL2_SOURCE_DIR}/include"
-    "${SDL2_image_SOURCE_DIR}/include"
+
+    # SDL2_image
+    "${SDL2_IMAGE_SOURCE_DIR}"
+    "${SDL2_IMAGE_SOURCE_DIR}/include"
 )
 
+
 # =========================================================
-# Enable OpenSSL TLS
+# Compile definitions
 # =========================================================
 
 target_compile_definitions(cxxgame PRIVATE
     GAME80_FORCE_OPENSSL_TLS=1
 )
+
 
 # =========================================================
 # Android libraries
@@ -148,11 +155,13 @@ find_library(ANDROID_LIB android)
 find_library(DL_LIB dl)
 find_library(Z_LIB z)
 
+
 # =========================================================
-# Link everything
+# Link
 # =========================================================
 
 target_link_libraries(cxxgame
+
     SDL2::SDL2
     SDL2_image::SDL2_image
 
@@ -164,6 +173,7 @@ target_link_libraries(cxxgame
     ${DL_LIB}
     ${Z_LIB}
 )
+
 
 message(STATUS "========================================")
 message(STATUS "Game57 Android Build")
