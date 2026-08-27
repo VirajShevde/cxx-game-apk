@@ -11,7 +11,7 @@ jobs:
     steps:
 
       # =====================================================
-      # Checkout repository
+      # Checkout
       # =====================================================
 
       - name: Checkout repository
@@ -48,7 +48,7 @@ jobs:
 
 
       # =====================================================
-      # Install Android NDK and CMake
+      # Android NDK + CMake
       # =====================================================
 
       - name: Install Android NDK and CMake
@@ -59,7 +59,7 @@ jobs:
 
 
       # =====================================================
-      # Install build dependencies
+      # Build dependencies
       # =====================================================
 
       - name: Install build dependencies
@@ -76,7 +76,7 @@ jobs:
 
 
       # =====================================================
-      # Download SDL2
+      # SDL2
       # =====================================================
 
       - name: Download SDL2 and SDL2_image
@@ -109,7 +109,7 @@ jobs:
 
 
       # =====================================================
-      # Copy SDL2 Java files
+      # SDL2 Java
       # =====================================================
 
       - name: Copy SDL2 Java files
@@ -125,13 +125,7 @@ jobs:
 
 
       # =====================================================
-      # Build OpenSSL for Android arm64-v8a
-      #
-      # Required output:
-      #
-      # openssl/arm64-v8a/include/openssl/ssl.h
-      # openssl/arm64-v8a/lib/libssl.a
-      # openssl/arm64-v8a/lib/libcrypto.a
+      # Build OpenSSL for Android ARM64
       # =====================================================
 
       - name: Build OpenSSL for Android arm64-v8a
@@ -140,68 +134,70 @@ jobs:
           set -e
 
           export ANDROID_NDK_HOME="$ANDROID_HOME/ndk/25.1.8937393"
-
           export TOOLCHAIN="$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64"
-
           export ANDROID_API=23
 
+          # The actual NDK compiler.
+          export REAL_CC="$TOOLCHAIN/bin/aarch64-linux-android${ANDROID_API}-clang"
+          export REAL_CXX="$TOOLCHAIN/bin/aarch64-linux-android${ANDROID_API}-clang++"
 
-          export PATH="$TOOLCHAIN/bin:$PATH"
+          test -x "$REAL_CC"
+          test -x "$REAL_CXX"
+
+          # =================================================
+          # OpenSSL 3.0.15 compatibility compiler wrappers
+          # =================================================
+
+          WRAPPER_DIR="/tmp/openssl-android-toolchain"
+
+          rm -rf "$WRAPPER_DIR"
+
+          mkdir -p "$WRAPPER_DIR"
+
+          cat > "$WRAPPER_DIR/aarch64-linux-android-gcc" <<EOF
+#!/bin/sh
+exec "$REAL_CC" "\$@"
+EOF
+
+          cat > "$WRAPPER_DIR/aarch64-linux-android-g++" <<EOF
+#!/bin/sh
+exec "$REAL_CXX" "\$@"
+EOF
+
+          chmod +x \
+            "$WRAPPER_DIR/aarch64-linux-android-gcc"
+
+          chmod +x \
+            "$WRAPPER_DIR/aarch64-linux-android-g++"
 
 
-          # Use the actual NDK Clang compilers directly.
+          # Put wrappers and actual NDK tools on PATH.
+          export PATH="$WRAPPER_DIR:$TOOLCHAIN/bin:$PATH"
 
-          export CC="$TOOLCHAIN/bin/aarch64-linux-android${ANDROID_API}-clang"
 
-          export CXX="$TOOLCHAIN/bin/aarch64-linux-android${ANDROID_API}-clang++"
+          echo "========================================"
+          echo "OpenSSL compiler compatibility check"
+          echo "========================================"
 
+          echo "Wrapper:"
+          command -v aarch64-linux-android-gcc
+
+          echo "Real compiler:"
+          echo "$REAL_CC"
+
+          echo "Testing wrapper:"
+
+          aarch64-linux-android-gcc --version
+
+          echo "========================================"
+
+
+          # Explicit compiler settings for the actual build.
+          export CC="$REAL_CC"
+          export CXX="$REAL_CXX"
           export AR="$TOOLCHAIN/bin/llvm-ar"
-
           export RANLIB="$TOOLCHAIN/bin/llvm-ranlib"
-
           export STRIP="$TOOLCHAIN/bin/llvm-strip"
-
-
-          echo "========================================"
-          echo "OpenSSL Android ARM64"
-          echo "========================================"
-
-          echo "NDK:"
-          echo "$ANDROID_NDK_HOME"
-
-          echo "Toolchain:"
-          echo "$TOOLCHAIN"
-
-          echo "API:"
-          echo "$ANDROID_API"
-
-          echo "CC:"
-          echo "$CC"
-
-          echo "CXX:"
-          echo "$CXX"
-
-          echo "AR:"
-          echo "$AR"
-
-          echo "RANLIB:"
-          echo "$RANLIB"
-
-          echo "========================================"
-
-
-          # Verify all required tools exist.
-
-          test -x "$CC"
-
-          test -x "$CXX"
-
-          test -x "$AR"
-
-          test -x "$RANLIB"
-
-
-          "$CC" --version
 
 
           # =================================================
@@ -210,24 +206,19 @@ jobs:
 
           cd /tmp
 
-          rm -rf \
-            openssl-3.0.15 \
-            openssl.tar.gz
-
+          rm -rf openssl-3.0.15 openssl.tar.gz
 
           curl -L \
             -o openssl.tar.gz \
             https://www.openssl.org/source/openssl-3.0.15.tar.gz
 
-
           tar -xzf openssl.tar.gz
-
 
           cd openssl-3.0.15
 
 
           # =================================================
-          # Configure OpenSSL
+          # Configure
           # =================================================
 
           ./Configure \
@@ -239,45 +230,17 @@ jobs:
 
 
           # =================================================
-          # Build OpenSSL
+          # Build
           # =================================================
 
           make -j"$(nproc)"
 
 
           # =================================================
-          # Install headers and static libraries
+          # Install
           # =================================================
 
           make install_sw
-
-
-      # =====================================================
-      # Normalize OpenSSL library directory
-      # =====================================================
-
-      - name: Normalize OpenSSL library paths
-        shell: bash
-        run: |
-          set -e
-
-          OPENSSL_DIR="$GITHUB_WORKSPACE/app/src/main/cpp/openssl/arm64-v8a"
-
-          mkdir -p "$OPENSSL_DIR/lib"
-
-
-          if [ -f "$OPENSSL_DIR/lib64/libssl.a" ]; then
-            cp \
-              "$OPENSSL_DIR/lib64/libssl.a" \
-              "$OPENSSL_DIR/lib/libssl.a"
-          fi
-
-
-          if [ -f "$OPENSSL_DIR/lib64/libcrypto.a" ]; then
-            cp \
-              "$OPENSSL_DIR/lib64/libcrypto.a" \
-              "$OPENSSL_DIR/lib/libcrypto.a"
-          fi
 
 
       # =====================================================
@@ -291,50 +254,30 @@ jobs:
 
           OPENSSL_DIR="$GITHUB_WORKSPACE/app/src/main/cpp/openssl/arm64-v8a"
 
-
-          echo "========================================"
-          echo "OpenSSL files produced:"
-          echo "========================================"
-
-          find "$OPENSSL_DIR" \
-            -type f \
-            | sort
-
-
-          echo "========================================"
-          echo "Checking files required by CMake"
-          echo "========================================"
-
+          echo "OpenSSL output:"
+          find "$OPENSSL_DIR" -type f | sort
 
           test -f \
             "$OPENSSL_DIR/include/openssl/ssl.h"
 
-
           test -f \
             "$OPENSSL_DIR/lib/libssl.a"
 
-
           test -f \
             "$OPENSSL_DIR/lib/libcrypto.a"
-
 
           echo "OpenSSL verification successful."
 
 
       # =====================================================
-      # Verify Java files
+      # Verify required Java files
       # =====================================================
 
       - name: Verify Java files
         shell: bash
         run: |
-          set -e
-
-          test -f \
-            app/src/main/java/com/example/cxxgame/MainActivity.java
-
-          test -f \
-            app/src/main/java/org/libsdl/app/SDLActivity.java
+          test -f app/src/main/java/com/example/cxxgame/MainActivity.java
+          test -f app/src/main/java/org/libsdl/app/SDLActivity.java
 
 
       # =====================================================
@@ -346,8 +289,7 @@ jobs:
         run: |
           set -e
 
-          gradle wrapper \
-            --gradle-version 8.5
+          gradle wrapper --gradle-version 8.5
 
           chmod +x gradlew
 
