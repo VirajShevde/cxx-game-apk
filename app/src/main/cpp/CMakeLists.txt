@@ -9,9 +9,9 @@ include(FetchContent)
 include(ExternalProject)
 
 
-# =========================================================
+# ============================
 # SDL2
-# =========================================================
+# ============================
 
 FetchContent_Declare(
     SDL2
@@ -22,9 +22,9 @@ FetchContent_MakeAvailable(SDL2)
 
 
 
-# =========================================================
+# ============================
 # SDL2_image
-# =========================================================
+# ============================
 
 FetchContent_Declare(
     SDL2_image
@@ -35,9 +35,9 @@ FetchContent_MakeAvailable(SDL2_image)
 
 
 
-# =========================================================
+# ============================
 # Game
-# =========================================================
+# ============================
 
 add_library(
     cxxgame
@@ -47,9 +47,9 @@ add_library(
 
 
 
-# =========================================================
-# OpenSSL 1.1.1w Android
-# =========================================================
+# ============================
+# OpenSSL 1.1.1w
+# ============================
 
 if(NOT ANDROID_ABI)
     message(FATAL_ERROR "ANDROID_ABI missing")
@@ -80,152 +80,40 @@ endif()
 
 
 
-set(OPENSSL_SOURCE
+set(
+    OPENSSL_SOURCE
     ${CMAKE_BINARY_DIR}/openssl-source
 )
 
-set(OPENSSL_ROOT
+
+set(
+    OPENSSL_ROOT
     ${CMAKE_BINARY_DIR}/openssl/${ANDROID_ABI}/install
 )
 
-set(OPENSSL_INCLUDE_DIR
+
+set(
+    OPENSSL_INCLUDE_DIR
     ${OPENSSL_ROOT}/include
 )
 
-set(OPENSSL_SSL
+
+set(
+    OPENSSL_SSL
     ${OPENSSL_ROOT}/lib/libssl.a
 )
 
-set(OPENSSL_CRYPTO
+
+set(
+    OPENSSL_CRYPTO
     ${OPENSSL_ROOT}/lib/libcrypto.a
 )
 
 
 
-# =========================================================
-# Build OpenSSL
-# =========================================================
-
-ExternalProject_Add(
-
-    openssl_build
-
-    GIT_REPOSITORY
-    https://github.com/openssl/openssl.git
-
-    GIT_TAG
-    OpenSSL_1_1_1w
-
-
-    SOURCE_DIR
-    ${OPENSSL_SOURCE}
-
-
-    CONFIGURE_COMMAND
-
-    ${CMAKE_COMMAND} -E env
-
-    ANDROID_NDK_ROOT=${ANDROID_NDK}
-
-    ${CMAKE_COMMAND} -E chdir
-
-    ${OPENSSL_SOURCE}
-
-    perl Configure
-
-    ${OPENSSL_TARGET}
-
-    -D__ANDROID_API__=23
-
-    no-shared
-    no-async
-    no-tests
-    no-engine
-    no-comp
-
-    --prefix=${OPENSSL_ROOT}
-
-
-
-    BUILD_COMMAND
-
-    ${CMAKE_COMMAND} -E chdir
-
-    ${OPENSSL_SOURCE}
-
-    make -j4
-
-
-
-    INSTALL_COMMAND
-
-    ${CMAKE_COMMAND} -E chdir
-
-    ${OPENSSL_SOURCE}
-
-    make install_sw
-
-
-
-    BUILD_BYPRODUCTS
-
-    ${OPENSSL_SSL}
-
-    ${OPENSSL_CRYPTO}
-
-)
-
-
-
-# =========================================================
-# OpenSSL Imported Libraries
-# =========================================================
-
-add_library(
-    openssl_crypto
-    STATIC
-    IMPORTED
-)
-
-
-set_target_properties(
-    openssl_crypto
-    PROPERTIES
-
-    IMPORTED_LOCATION
-    ${OPENSSL_CRYPTO}
-)
-
-
-
-add_library(
-
-
-set(OPENSSL_SOURCE
-    ${CMAKE_BINARY_DIR}/openssl-source
-)
-
-set(OPENSSL_ROOT
-    ${CMAKE_BINARY_DIR}/openssl/${ANDROID_ABI}/install
-)
-
-set(OPENSSL_INCLUDE_DIR
-    ${OPENSSL_ROOT}/include
-)
-
-set(OPENSSL_SSL
-    ${OPENSSL_ROOT}/lib/libssl.a
-)
-
-set(OPENSSL_CRYPTO
-    ${OPENSSL_ROOT}/lib/libcrypto.a
-)
-
-
-
-# =========================================================
+# ============================
 # OpenSSL Build
-# =========================================================
+# ============================
 
 ExternalProject_Add(
 
@@ -298,9 +186,9 @@ ExternalProject_Add(
 
 
 
-# =========================================================
+# ============================
 # OpenSSL Imported Libraries
-# =========================================================
+# ============================
 
 add_library(
     openssl_crypto
@@ -311,6 +199,7 @@ add_library(
 
 set_target_properties(
     openssl_crypto
+
     PROPERTIES
 
     IMPORTED_LOCATION
@@ -328,6 +217,7 @@ add_library(
 
 set_target_properties(
     openssl_ssl
+
     PROPERTIES
 
     IMPORTED_LOCATION
@@ -358,9 +248,9 @@ add_dependencies(
 
 
 
-# =========================================================
+# ============================
 # Includes
-# =========================================================
+# ============================
 
 target_include_directories(
     cxxgame
@@ -378,9 +268,9 @@ target_include_directories(
 
 
 
-# =========================================================
-# Defines
-# =========================================================
+# ============================
+# Definitions
+# ============================
 
 target_compile_definitions(
     cxxgame
@@ -394,22 +284,25 @@ target_compile_definitions(
 
 
 
-# =========================================================
+# ============================
 # Android Libraries
-# =========================================================
+# ============================
 
 find_library(LOG_LIB log)
+
 find_library(ANDROID_LIB android)
+
 find_library(DL_LIB dl)
+
 find_library(Z_LIB z)
+
 find_library(M_LIB m)
-find_library(PTHREAD_LIB pthread)
 
 
 
-# =========================================================
+# ============================
 # Link
-# =========================================================
+# ============================
 
 target_link_libraries(
 
@@ -433,17 +326,15 @@ target_link_libraries(
 
     ${M_LIB}
 
-    ${PTHREAD_LIB}
-
     c++_shared
 
 )
 
 
 
-# =========================================================
+# ============================
 # Status
-# =========================================================
+# ============================
 
 message(STATUS "================================")
 message(STATUS "Game57 Android Build")
@@ -451,5 +342,4 @@ message(STATUS "ABI: ${ANDROID_ABI}")
 message(STATUS "SDL2 enabled")
 message(STATUS "SDL2_image enabled")
 message(STATUS "OpenSSL 1.1.1w static enabled")
-message(STATUS "pthread enabled")
 message(STATUS "================================")
