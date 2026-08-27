@@ -112,6 +112,10 @@ set(OPENSSL_CRYPTO
 # Build OpenSSL 1.1.1w
 # =========================================================
 
+# =========================================================
+# Build OpenSSL 1.1.1w
+# =========================================================
+
 ExternalProject_Add(
 
     openssl_build
@@ -126,6 +130,7 @@ ExternalProject_Add(
     ${OPENSSL_SOURCE}
 
 
+
     CONFIGURE_COMMAND
 
     ${CMAKE_COMMAND} -E env
@@ -133,6 +138,15 @@ ExternalProject_Add(
     PATH=/usr/bin:${ANDROID_NDK}/toolchains/llvm/prebuilt/linux-x86_64/bin:$ENV{PATH}
 
     ANDROID_NDK_ROOT=${ANDROID_NDK}
+
+    CC=${OPENSSL_TRIPLE}23-clang
+
+    CXX=${OPENSSL_TRIPLE}23-clang++
+
+    AR=${OPENSSL_TRIPLE}-ar
+
+    RANLIB=${OPENSSL_TRIPLE}-ranlib
+
 
     ${CMAKE_COMMAND} -E chdir
 
@@ -142,7 +156,7 @@ ExternalProject_Add(
 
     ${OPENSSL_TARGET}
 
-    --cross-compile-prefix=${OPENSSL_TRIPLE}23-
+    --cross-compile-prefix=${OPENSSL_TRIPLE}-
 
     -D__ANDROID_API__=23
 
