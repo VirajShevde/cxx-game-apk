@@ -1,3 +1,6 @@
+#include <openssl/rsa.h>
+#include <openssl/bn.h>
+
 /*
  * v13 security update:
  * - Save MAC key is Android Keystore-backed and non-exportable.
