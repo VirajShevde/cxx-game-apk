@@ -26,7 +26,7 @@ FetchContent_MakeAvailable(SDL2)
 
 
 # =========================================================
-# SDL2_image
+# SDL2_image 2.8.1
 # =========================================================
 
 FetchContent_Declare(
@@ -82,6 +82,31 @@ set(
 )
 
 
+# =========================================================
+# Verify OpenSSL files
+# =========================================================
+
+if(NOT EXISTS ${OPENSSL_INCLUDE_DIR}/openssl/ssl.h)
+    message(FATAL_ERROR
+        "Missing OpenSSL headers: ${OPENSSL_INCLUDE_DIR}"
+    )
+endif()
+
+
+if(NOT EXISTS ${OPENSSL_INCLUDE_DIR}/openssl/rsa.h)
+    message(FATAL_ERROR
+        "Missing OpenSSL RSA header: ${OPENSSL_INCLUDE_DIR}/openssl/rsa.h"
+    )
+endif()
+
+
+if(NOT EXISTS ${OPENSSL_INCLUDE_DIR}/openssl/bn.h)
+    message(FATAL_ERROR
+        "Missing OpenSSL BIGNUM header: ${OPENSSL_INCLUDE_DIR}/openssl/bn.h"
+    )
+endif()
+
+
 if(NOT EXISTS ${OPENSSL_SSL})
     message(FATAL_ERROR
         "Missing OpenSSL ssl library: ${OPENSSL_SSL}"
@@ -97,7 +122,7 @@ endif()
 
 
 # =========================================================
-# Imported OpenSSL Targets
+# Imported OpenSSL Crypto
 # =========================================================
 
 add_library(
@@ -106,14 +131,19 @@ add_library(
     IMPORTED
 )
 
-
 set_target_properties(
     openssl_crypto
     PROPERTIES
     IMPORTED_LOCATION
-    ${OPENSSL_CRYPTO}
+        ${OPENSSL_CRYPTO}
+    INTERFACE_INCLUDE_DIRECTORIES
+        ${OPENSSL_INCLUDE_DIR}
 )
 
+
+# =========================================================
+# Imported OpenSSL SSL
+# =========================================================
 
 add_library(
     openssl_ssl
@@ -121,15 +151,17 @@ add_library(
     IMPORTED
 )
 
-
 set_target_properties(
     openssl_ssl
     PROPERTIES
     IMPORTED_LOCATION
-    ${OPENSSL_SSL}
+        ${OPENSSL_SSL}
+
+    INTERFACE_INCLUDE_DIRECTORIES
+        ${OPENSSL_INCLUDE_DIR}
 
     INTERFACE_LINK_LIBRARIES
-    openssl_crypto
+        openssl_crypto
 )
 
 
@@ -160,8 +192,6 @@ target_compile_definitions(
     PRIVATE
 
     GAME80_FORCE_OPENSSL_TLS=1
-
-    OPENSSL_API_COMPAT=0x10100000L
 )
 
 
@@ -174,24 +204,20 @@ find_library(
     log
 )
 
-
 find_library(
     ANDROID_LIB
     android
 )
-
 
 find_library(
     DL_LIB
     dl
 )
 
-
 find_library(
     Z_LIB
     z
 )
-
 
 find_library(
     M_LIB
@@ -207,7 +233,6 @@ target_link_libraries(
     cxxgame
 
     SDL2::SDL2
-
     SDL2_image::SDL2_image
 
     openssl_ssl
@@ -231,7 +256,8 @@ message(STATUS "================================")
 message(STATUS "Game57 Android Build")
 message(STATUS "ABI: ${ANDROID_ABI}")
 message(STATUS "SDL2 2.30.12 enabled")
-message(STATUS "SDL2_image enabled")
-message(STATUS "OpenSSL 1.1.1w from GitHub Actions")
+message(STATUS "SDL2_image 2.8.1 enabled")
+message(STATUS "OpenSSL 1.1.1w enabled")
 message(STATUS "Static OpenSSL enabled")
+message(STATUS "OpenSSL headers verified")
 message(STATUS "================================")
