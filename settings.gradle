@@ -5,15 +5,18 @@ pluginManagement {
         gradlePluginPortal()
     }
 }
+
 dependencyResolutionManagement {
     repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+
     repositories {
         google()
         mavenCentral()
-        // Additional repository for SDL2 packages if needed
-        maven { url 'https://jcenter.bintray.com' }
-        maven { url 'https://maven.pkg.github.com/libsdl-org/*' }
     }
 }
+
+rootProject.name = "cxx-game-apk"
+
+include ':app'
 rootProject.name = "CXXGameApp"
 include ':app'
