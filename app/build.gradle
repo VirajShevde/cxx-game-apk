@@ -15,6 +15,10 @@ android {
         versionCode 1
         versionName "1.0"
 
+        ndk {
+            abiFilters selectedAbi
+        }
+
         externalNativeBuild {
             cmake {
                 cppFlags ""
@@ -24,10 +28,6 @@ android {
                           "-DSDL2_LIB_DIR=${project.buildDir}/libs/SDL2",
                           "-DANDROID_ABI=${selectedAbi}"
             }
-        }
-
-        ndk {
-            abiFilters selectedAbi
         }
     }
 
@@ -47,4 +47,8 @@ android {
             version "3.22.1"
         }
     }
+}
+
+dependencies {
+    implementation 'androidx.appcompat:appcompat:1.6.1'
 }
