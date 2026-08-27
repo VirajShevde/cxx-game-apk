@@ -1,7 +1,46 @@
 plugins {
-    id 'com.android.application' version '8.1.0' apply false
+    id 'com.android.application'
 }
 
-task clean(type: Delete) {
-    delete rootProject.buildDir
+def selectedAbi = project.findProperty("ABI") ?: "arm64-v8a"
+
+android {
+    namespace 'com.example.cxxgame'
+    compileSdk 33
+
+    defaultConfig {
+        applicationId "com.example.cxxgame"
+        minSdk 24
+        targetSdk 33
+        versionCode 1
+        versionName "1.0"
+
+        externalNativeBuild {
+            cmake {
+                cppFlags ""
+
+                arguments "-DANDROID_STL=c++_shared",
+                          "-DANDROID_ABI=${selectedAbi}",
+                          "-DSDL2_INCLUDE_DIR=${project.buildDir}/includes/SDL2",
+                          "-DSDL2_LIB_DIR=${project.buildDir}/libs/SDL2"
+            }
+        }
+    }
+
+    buildTypes {
+        debug {
+            minifyEnabled false
+        }
+
+        release {
+            minifyEnabled false
+        }
+    }
+
+    externalNativeBuild {
+        cmake {
+            path file("src/main/cpp/CMakeLists.txt")
+            version "3.22.1"
+        }
+    }
 }
