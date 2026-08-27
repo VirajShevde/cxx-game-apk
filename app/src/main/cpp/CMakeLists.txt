@@ -58,22 +58,22 @@ endif()
 
 if(ANDROID_ABI STREQUAL "arm64-v8a")
 
-    set(OPENSSL_TARGET android-arm64)
+    set(OPENSSL_TARGET linux-generic64)
     set(OPENSSL_TRIPLE aarch64-linux-android)
 
 elseif(ANDROID_ABI STREQUAL "armeabi-v7a")
 
-    set(OPENSSL_TARGET android-arm)
+    set(OPENSSL_TARGET linux-generic32)
     set(OPENSSL_TRIPLE arm-linux-androideabi)
 
 elseif(ANDROID_ABI STREQUAL "x86")
 
-    set(OPENSSL_TARGET android-x86)
+    set(OPENSSL_TARGET linux-generic32)
     set(OPENSSL_TRIPLE i686-linux-android)
 
 elseif(ANDROID_ABI STREQUAL "x86_64")
 
-    set(OPENSSL_TARGET android-x86_64)
+    set(OPENSSL_TARGET linux-generic64)
     set(OPENSSL_TRIPLE x86_64-linux-android)
 
 else()
@@ -88,17 +88,21 @@ set(OPENSSL_SOURCE
     ${CMAKE_BINARY_DIR}/openssl-source
 )
 
+
 set(OPENSSL_ROOT
     ${CMAKE_BINARY_DIR}/openssl/${ANDROID_ABI}/install
 )
+
 
 set(OPENSSL_INCLUDE_DIR
     ${OPENSSL_ROOT}/include
 )
 
+
 set(OPENSSL_SSL
     ${OPENSSL_ROOT}/lib/libssl.a
 )
+
 
 set(OPENSSL_CRYPTO
     ${OPENSSL_ROOT}/lib/libcrypto.a
@@ -107,7 +111,7 @@ set(OPENSSL_CRYPTO
 
 
 # =========================================================
-# Build OpenSSL 1.1.1w
+# OpenSSL 1.1.1w build
 # =========================================================
 
 ExternalProject_Add(
@@ -120,8 +124,10 @@ ExternalProject_Add(
     GIT_TAG
     OpenSSL_1_1_1w
 
+
     SOURCE_DIR
     ${OPENSSL_SOURCE}
+
 
 
     CONFIGURE_COMMAND
@@ -140,7 +146,7 @@ ExternalProject_Add(
 
     ${OPENSSL_TARGET}
 
-    --cross-compile-prefix=${OPENSSL_TRIPLE}-
+    --cross-compile-prefix=${OPENSSL_TRIPLE}23-
 
     -D__ANDROID_API__=23
 
@@ -185,7 +191,7 @@ ExternalProject_Add(
 
 
 # =========================================================
-# OpenSSL imported targets
+# OpenSSL imported libraries
 # =========================================================
 
 add_library(
@@ -197,7 +203,6 @@ add_library(
 
 set_target_properties(
     openssl_crypto
-
     PROPERTIES
 
     IMPORTED_LOCATION
@@ -215,7 +220,6 @@ add_library(
 
 set_target_properties(
     openssl_ssl
-
     PROPERTIES
 
     IMPORTED_LOCATION
@@ -232,10 +236,12 @@ add_dependencies(
     openssl_build
 )
 
+
 add_dependencies(
     openssl_ssl
     openssl_build
 )
+
 
 add_dependencies(
     cxxgame
@@ -245,10 +251,11 @@ add_dependencies(
 
 
 # =========================================================
-# Include directories
+# Includes
 # =========================================================
 
 target_include_directories(
+
     cxxgame
 
     PRIVATE
@@ -269,6 +276,7 @@ target_include_directories(
 # =========================================================
 
 target_compile_definitions(
+
     cxxgame
 
     PRIVATE
@@ -285,9 +293,13 @@ target_compile_definitions(
 # =========================================================
 
 find_library(LOG_LIB log)
+
 find_library(ANDROID_LIB android)
+
 find_library(DL_LIB dl)
+
 find_library(Z_LIB z)
+
 find_library(M_LIB m)
 
 
@@ -319,13 +331,12 @@ target_link_libraries(
     ${M_LIB}
 
     c++_shared
-
 )
 
 
 
 message(STATUS "==============================")
 message(STATUS "Game57 Android Build")
-message(STATUS "ABI ${ANDROID_ABI}")
-message(STATUS "OpenSSL 1.1.1w static enabled")
+message(STATUS "ABI: ${ANDROID_ABI}")
+message(STATUS "OpenSSL 1.1.1w static")
 message(STATUS "==============================")
