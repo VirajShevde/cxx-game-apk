@@ -72,11 +72,8 @@ endif()
 
 
 set(
-
     OPENSSL_ROOT
-
-    ${CMAKE_SOURCE_DIR}/../../../openssl-install/${ANDROID_ABI}
-
+    ${CMAKE_SOURCE_DIR}/openssl/${ANDROID_ABI}
 )
 
 
