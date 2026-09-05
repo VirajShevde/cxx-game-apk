@@ -69,3 +69,4 @@ jobs:
           name: cxxgame-debug-apk
           path: app/build/outputs/apk/**/*.apk
           if-no-files-found: error
+
