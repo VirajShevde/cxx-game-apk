@@ -1,190 +1,71 @@
-plugins {
-    id 'com.android.application'
-}
+name: Android Build
 
-android {
-    namespace 'com.example.cxxgame'
-    compileSdk 33
+on:
+  push:
+  workflow_dispatch:
 
-    defaultConfig {
-        applicationId "com.example.cxxgame"
-        minSdk 24
-        targetSdk 33
-        versionCode 1
-        versionName "1.0"
+jobs:
+  build:
+    runs-on: ubuntu-latest
 
-        externalNativeBuild {
-            cmake {
-                cppFlags ""
-                arguments "-DANDROID_STL=c++_shared"
-            }
-        }
-    }
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-    buildTypes {
-        release {
-            minifyEnabled false
-        }
-    }
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
 
-    externalNativeBuild {
-        cmake {
-            path "src/main/cpp/CMakeLists.txt"
-            version "3.22.1"
-        }
-    }
-}
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
 
-def cppDir = file("src/main/cpp")
-def sdl2Dir = file("${cppDir}/SDL2")
-def imageDir = file("${cppDir}/SDL2_image")
-def downloadDir = file("${buildDir}/downloads")
+      - name: Install Android SDK components
+        run: |
+          sdkmanager "platform-tools"
+          sdkmanager "platforms;android-33"
+          sdkmanager "build-tools;33.0.2"
+          sdkmanager "cmake;3.22.1"
+          sdkmanager "ndk;25.1.8937393"
 
-tasks.register("downloadSDL2AndImage") {
+      - name: Accept Android licenses
+        run: yes | sdkmanager --licenses || true
 
-    doLast {
+      - name: Check Android toolchain
+        run: |
+          echo "Java:"
+          java -version
 
-        downloadDir.mkdirs()
+          echo "Gradle:"
+          chmod +x ./gradlew
+          ./gradlew --version
 
-        /*
-         * SDL2
-         */
-        def sdl2Version = "2.28.5"
-        def sdl2Archive = file(
-                "${downloadDir}/SDL2-${sdl2Version}.tar.gz"
-        )
+          echo "NDK:"
+          ls "$ANDROID_SDK_ROOT/ndk/25.1.8937393"
 
-        def sdl2Url =
-                "https://github.com/libsdl-org/SDL/releases/download/release-${sdl2Version}/SDL2-${sdl2Version}.tar.gz"
+          echo "CMake:"
+          "$ANDROID_SDK_ROOT/cmake/3.22.1/bin/cmake" --version
 
-        if (!sdl2Dir.exists()) {
+      - name: Verify game source
+        run: |
+          test -f app/src/main/cpp/game57-4.cxx
+          test -f app/src/main/cpp/CMakeLists.txt
+          echo "game57-4.cxx found"
+          echo "CMakeLists.txt found"
 
-            println "Downloading SDL2 ${sdl2Version}..."
+      - name: Build Debug APK
+        run: |
+          chmod +x ./gradlew
+          ./gradlew clean assembleDebug --stacktrace
 
-            if (!sdl2Archive.exists()) {
+      - name: Find APK
+        run: |
+          find app/build/outputs/apk -type f -name "*.apk" -print
 
-                new URL(sdl2Url).withInputStream { input ->
-                    sdl2Archive.withOutputStream { output ->
-                        output << input
-                    }
-                }
-            }
-
-            def extractDir = file(
-                    "${downloadDir}/SDL2-${sdl2Version}"
-            )
-
-            if (!extractDir.exists()) {
-
-                exec {
-                    commandLine(
-                            "tar",
-                            "-xzf",
-                            sdl2Archive.absolutePath,
-                            "-C",
-                            downloadDir.absolutePath
-                    )
-                }
-            }
-
-            if (!extractDir.exists()) {
-                throw new GradleException(
-                        "SDL2 extraction failed: ${extractDir}"
-                )
-            }
-
-            copy {
-                from extractDir
-                into sdl2Dir
-            }
-        }
-
-        /*
-         * SDL2_image
-         */
-        def imageVersion = "2.6.3"
-        def imageArchive = file(
-                "${downloadDir}/SDL2_image-${imageVersion}.tar.gz"
-        )
-
-        def imageUrl =
-                "https://github.com/libsdl-org/SDL_image/releases/download/release-${imageVersion}/SDL2_image-${imageVersion}.tar.gz"
-
-        if (!imageDir.exists()) {
-
-            println "Downloading SDL2_image ${imageVersion}..."
-
-            if (!imageArchive.exists()) {
-
-                new URL(imageUrl).withInputStream { input ->
-                    imageArchive.withOutputStream { output ->
-                        output << input
-                    }
-                }
-            }
-
-            def extractDir = file(
-                    "${downloadDir}/SDL2_image-${imageVersion}"
-            )
-
-            if (!extractDir.exists()) {
-
-                exec {
-                    commandLine(
-                            "tar",
-                            "-xzf",
-                            imageArchive.absolutePath,
-                            "-C",
-                            downloadDir.absolutePath
-                    )
-                }
-            }
-
-            if (!extractDir.exists()) {
-                throw new GradleException(
-                        "SDL2_image extraction failed: ${extractDir}"
-                )
-            }
-
-            copy {
-                from extractDir
-                into imageDir
-            }
-        }
-
-        println "=========================================="
-        println "SDL2 prepared:        ${sdl2Dir}"
-        println "SDL2_image prepared:  ${imageDir}"
-        println "=========================================="
-    }
-}
-
-tasks.register("setupSDL2Files") {
-    dependsOn("downloadSDL2AndImage")
-
-    doLast {
-
-        if (!sdl2Dir.exists()) {
-            throw new GradleException(
-                    "SDL2 source directory missing: ${sdl2Dir}"
-            )
-        }
-
-        if (!imageDir.exists()) {
-            throw new GradleException(
-                    "SDL2_image source directory missing: ${imageDir}"
-            )
-        }
-
-        println "SDL2 source verified."
-        println "SDL2_image source verified."
-    }
-}
-
-tasks.named("preBuild") {
-    dependsOn("setupSDL2Files")
-}
-
-dependencies {
-    implementation 'androidx.appcompat:appcompat:1.6.1'
-}
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: cxxgame-debug-apk
+          path: app/build/outputs/apk/**/*.apk
+          if-no-files-found: error
