@@ -33,36 +33,36 @@ android {
             version "3.22.1"
         }
     }
-
-    preBuild.dependsOn 'setupSDL2Files'
 }
 
-task downloadSDL2AndImage {
+def cppDir = file("src/main/cpp")
+def sdl2Dir = file("${cppDir}/SDL2")
+def imageDir = file("${cppDir}/SDL2_image")
+def downloadDir = file("${buildDir}/downloads")
+
+tasks.register("downloadSDL2AndImage") {
+
     doLast {
-        def cppDir = new File(project.projectDir, "src/main/cpp")
 
-        def sdl2Dir = new File(cppDir, "SDL2")
-        def imageDir = new File(cppDir, "SDL2_image")
-
-        def downloadDir = new File(project.buildDir, "downloads")
         downloadDir.mkdirs()
 
         /*
          * SDL2
          */
         def sdl2Version = "2.28.5"
-        def sdl2Archive = new File(
-                downloadDir,
-                "SDL2-${sdl2Version}.tar.gz"
+        def sdl2Archive = file(
+                "${downloadDir}/SDL2-${sdl2Version}.tar.gz"
         )
 
         def sdl2Url =
                 "https://github.com/libsdl-org/SDL/releases/download/release-${sdl2Version}/SDL2-${sdl2Version}.tar.gz"
 
         if (!sdl2Dir.exists()) {
+
             println "Downloading SDL2 ${sdl2Version}..."
 
             if (!sdl2Archive.exists()) {
+
                 new URL(sdl2Url).withInputStream { input ->
                     sdl2Archive.withOutputStream { output ->
                         output << input
@@ -70,12 +70,12 @@ task downloadSDL2AndImage {
                 }
             }
 
-            def extractDir = new File(
-                    downloadDir,
-                    "SDL2-${sdl2Version}"
+            def extractDir = file(
+                    "${downloadDir}/SDL2-${sdl2Version}"
             )
 
             if (!extractDir.exists()) {
+
                 exec {
                     commandLine(
                             "tar",
@@ -87,11 +87,15 @@ task downloadSDL2AndImage {
                 }
             }
 
-            if (extractDir.exists()) {
-                copy {
-                    from extractDir
-                    into sdl2Dir
-                }
+            if (!extractDir.exists()) {
+                throw new GradleException(
+                        "SDL2 extraction failed: ${extractDir}"
+                )
+            }
+
+            copy {
+                from extractDir
+                into sdl2Dir
             }
         }
 
@@ -99,18 +103,19 @@ task downloadSDL2AndImage {
          * SDL2_image
          */
         def imageVersion = "2.6.3"
-        def imageArchive = new File(
-                downloadDir,
-                "SDL2_image-${imageVersion}.tar.gz"
+        def imageArchive = file(
+                "${downloadDir}/SDL2_image-${imageVersion}.tar.gz"
         )
 
         def imageUrl =
                 "https://github.com/libsdl-org/SDL_image/releases/download/release-${imageVersion}/SDL2_image-${imageVersion}.tar.gz"
 
         if (!imageDir.exists()) {
+
             println "Downloading SDL2_image ${imageVersion}..."
 
             if (!imageArchive.exists()) {
+
                 new URL(imageUrl).withInputStream { input ->
                     imageArchive.withOutputStream { output ->
                         output << input
@@ -118,12 +123,12 @@ task downloadSDL2AndImage {
                 }
             }
 
-            def extractDir = new File(
-                    downloadDir,
-                    "SDL2_image-${imageVersion}"
+            def extractDir = file(
+                    "${downloadDir}/SDL2_image-${imageVersion}"
             )
 
             if (!extractDir.exists()) {
+
                 exec {
                     commandLine(
                             "tar",
@@ -135,45 +140,49 @@ task downloadSDL2AndImage {
                 }
             }
 
-            if (extractDir.exists()) {
-                copy {
-                    from extractDir
-                    into imageDir
-                }
+            if (!extractDir.exists()) {
+                throw new GradleException(
+                        "SDL2_image extraction failed: ${extractDir}"
+                )
+            }
+
+            copy {
+                from extractDir
+                into imageDir
             }
         }
 
-        println "SDL2 and SDL2_image source prepared."
+        println "=========================================="
+        println "SDL2 prepared:        ${sdl2Dir}"
+        println "SDL2_image prepared:  ${imageDir}"
+        println "=========================================="
     }
 }
 
-task setupSDL2Files {
-    dependsOn downloadSDL2AndImage
+tasks.register("setupSDL2Files") {
+    dependsOn("downloadSDL2AndImage")
 
     doLast {
-        def cppDir = new File(project.projectDir, "src/main/cpp")
-
-        def sdl2Dir = new File(cppDir, "SDL2")
-        def imageDir = new File(cppDir, "SDL2_image")
 
         if (!sdl2Dir.exists()) {
             throw new GradleException(
-                    "SDL2 source directory was not created: ${sdl2Dir}"
+                    "SDL2 source directory missing: ${sdl2Dir}"
             )
         }
 
         if (!imageDir.exists()) {
             throw new GradleException(
-                    "SDL2_image source directory was not created: ${imageDir}"
+                    "SDL2_image source directory missing: ${imageDir}"
             )
         }
 
-        println "=========================================="
-        println "SDL2 source: ${sdl2Dir}"
-        println "SDL2_image source: ${imageDir}"
-        println "SDL2 setup complete"
-        println "=========================================="
+        println "SDL2 source verified."
+        println "SDL2_image source verified."
     }
+}
+
+tasks.named("preBuild") {
+    dependsOn("setupSDL2Files")
 }
 
 dependencies {
