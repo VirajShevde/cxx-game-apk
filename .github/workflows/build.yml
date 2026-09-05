@@ -1,365 +1,181 @@
-name: Build Android APK
-
-on:
-  push:
-    branches:
-      - main
-
-  workflow_dispatch:
-
-jobs:
-  build:
-
-    runs-on: ubuntu-latest
-
-    strategy:
-      fail-fast: false
-
-      matrix:
-        abi:
-          - arm64-v8a
-          - armeabi-v7a
-          - x86
-          - x86_64
-
-    steps:
-
-      # =====================================================
-      # Checkout
-      # =====================================================
-
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-
-      # =====================================================
-      # Java
-      # =====================================================
-
-      - name: Setup Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: 17
-
-
-      # =====================================================
-      # Android SDK
-      # =====================================================
-
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
-
-
-      - name: Accept SDK licenses
-        run: |
-          yes | sdkmanager --licenses || true
-
-
-      # =====================================================
-      # Gradle
-      # =====================================================
-
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v3
-        with:
-          gradle-version: 8.5
-
-
-      # =====================================================
-      # Android NDK + CMake
-      # =====================================================
-
-      - name: Install Android NDK and CMake
-        run: |
-          sdkmanager \
-            "platform-tools" \
-            "platforms;android-33" \
-            "ndk;25.1.8937393" \
-            "cmake;3.22.1"
-
-
-      # =====================================================
-      # Install OpenSSL build dependencies
-      # =====================================================
-
-      - name: Install OpenSSL dependencies
-        run: |
-          sudo apt-get update
-
-          sudo apt-get install -y \
-            perl \
-            make \
-            gcc \
-            g++ \
-            git
-
-
-      # =====================================================
-      # Build OpenSSL 1.1.1w
-      # =====================================================
-
-      - name: Build OpenSSL 1.1.1w
-        shell: bash
-        run: |
-
-          set -e
-
-          ABI="${{ matrix.abi }}"
-
-          OPENSSL_VERSION="1.1.1w"
-
-          API=24
-
-          NDK="$ANDROID_NDK_HOME"
-
-          TOOLCHAIN="$NDK/toolchains/llvm/prebuilt/linux-x86_64/bin"
-
-          PREFIX="$GITHUB_WORKSPACE/app/src/main/cpp/openssl/$ABI"
-
-          echo "=========================================="
-          echo "Building OpenSSL"
-          echo "ABI: $ABI"
-          echo "API: $API"
-          echo "NDK: $NDK"
-          echo "PREFIX: $PREFIX"
-          echo "=========================================="
-
-          rm -rf openssl
-
-          git clone \
-            --branch OpenSSL_1_1_1w \
-            --depth 1 \
-            https://github.com/openssl/openssl.git \
-            openssl
-
-          cd openssl
-
-          export PATH="$TOOLCHAIN:$PATH"
-
-          export ANDROID_NDK_ROOT="$NDK"
-
-          export ANDROID_NDK_HOME="$NDK"
-
-
-          # -------------------------------------------------
-          # Select OpenSSL target
-          # -------------------------------------------------
-
-          if [ "$ABI" = "arm64-v8a" ]; then
-
-            TARGET="android-arm64"
-
-            CROSS_PREFIX="aarch64-linux-android${API}-"
-
-          elif [ "$ABI" = "armeabi-v7a" ]; then
-
-            TARGET="android-arm"
-
-            CROSS_PREFIX="arm-linux-androideabi${API}-"
-
-          elif [ "$ABI" = "x86" ]; then
-
-            TARGET="android-x86"
-
-            CROSS_PREFIX="i686-linux-android${API}-"
-
-          elif [ "$ABI" = "x86_64" ]; then
-
-            TARGET="android-x86_64"
-
-            CROSS_PREFIX="x86_64-linux-android${API}-"
-
-          else
-
-            echo "Unsupported ABI: $ABI"
-
-            exit 1
-
-          fi
-
-
-          echo "OpenSSL target: $TARGET"
-
-          echo "Cross compiler prefix: $CROSS_PREFIX"
-
-
-          # -------------------------------------------------
-          # Configure OpenSSL
-          # -------------------------------------------------
-
-          ./Configure \
-            "$TARGET" \
-            --cross-compile-prefix="$CROSS_PREFIX" \
-            -D__ANDROID_API__="$API" \
-            no-shared \
-            no-tests \
-            no-async \
-            no-engine \
-            --prefix="$PREFIX"
-
-
-          # -------------------------------------------------
-          # Build
-          # -------------------------------------------------
-
-          make -j"$(nproc)"
-
-
-          # -------------------------------------------------
-          # Install
-          # -------------------------------------------------
-
-          make install_sw
-
-
-          cd "$GITHUB_WORKSPACE"
-
-
-      # =====================================================
-      # Verify OpenSSL
-      # =====================================================
-
-      - name: Verify OpenSSL
-        shell: bash
-        run: |
-
-          set -e
-
-          ABI="${{ matrix.abi }}"
-
-          OPENSSL_DIR="app/src/main/cpp/openssl/$ABI"
-
-          echo "=========================================="
-          echo "Checking OpenSSL"
-          echo "ABI: $ABI"
-          echo "Directory: $OPENSSL_DIR"
-          echo "=========================================="
-
-
-          if [ ! -f "$OPENSSL_DIR/lib/libssl.a" ]; then
-            echo "ERROR: libssl.a not found"
-            exit 1
-          fi
-
-
-          if [ ! -f "$OPENSSL_DIR/lib/libcrypto.a" ]; then
-            echo "ERROR: libcrypto.a not found"
-            exit 1
-          fi
-
-
-          if [ ! -d "$OPENSSL_DIR/include/openssl" ]; then
-            echo "ERROR: OpenSSL headers not found"
-            exit 1
-          fi
-
-
-          echo ""
-          echo "OpenSSL SSL:"
-          ls -lh "$OPENSSL_DIR/lib/libssl.a"
-
-
-          echo ""
-          echo "OpenSSL Crypto:"
-          ls -lh "$OPENSSL_DIR/lib/libcrypto.a"
-
-
-          echo ""
-          echo "OpenSSL headers:"
-          ls "$OPENSSL_DIR/include/openssl" | head
-
-
-          echo ""
-          echo "OpenSSL verification successful."
-
-
-      # =====================================================
-      # Show ABI
-      # =====================================================
-
-      - name: Show build ABI
-        run: |
-          echo "=========================================="
-          echo "Building Android ABI:"
-          echo "${{ matrix.abi }}"
-          echo "=========================================="
-
-
-      # =====================================================
-      # Prepare Gradle
-      # =====================================================
-
-      - name: Prepare Gradle
-        run: |
-          chmod +x gradlew 2>/dev/null || true
-
-
-      # =====================================================
-      # Build APK
-      # =====================================================
-
-      - name: Build APK
-        shell: bash
-        run: |
-
-          set -e
-
-          echo "=========================================="
-          echo "Starting Android build"
-          echo "ABI: ${{ matrix.abi }}"
-          echo "=========================================="
-
-
-          if [ -f "./gradlew" ]; then
-
-            echo "Using Gradle wrapper"
-
-            ./gradlew clean assembleDebug \
-              -PABI="${{ matrix.abi }}" \
-              --stacktrace
-
-          else
-
-            echo "Gradle wrapper not found."
-
-            echo "Using installed Gradle."
-
-            gradle clean assembleDebug \
-              -PABI="${{ matrix.abi }}" \
-              --stacktrace
-
-          fi
-
-
-      # =====================================================
-      # Find APK
-      # =====================================================
-
-      - name: Find APK
-        run: |
-
-          echo "=========================================="
-          echo "Generated APK files"
-          echo "=========================================="
-
-          find app/build/outputs \
-            -type f \
-            -name "*.apk" \
-            -print
-
-
-      # =====================================================
-      # Upload APK
-      # =====================================================
-
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
-
-        with:
-          name: apk-${{ matrix.abi }}
-
-          path: |
-            app/build/outputs/apk/debug/*.apk
-
-          if-no-files-found: error
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'com.example.cxxgame'
+    compileSdk 33
+
+    defaultConfig {
+        applicationId "com.example.cxxgame"
+        minSdk 24
+        targetSdk 33
+        versionCode 1
+        versionName "1.0"
+
+        externalNativeBuild {
+            cmake {
+                cppFlags ""
+                arguments "-DANDROID_STL=c++_shared"
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+        }
+    }
+
+    externalNativeBuild {
+        cmake {
+            path "src/main/cpp/CMakeLists.txt"
+            version "3.22.1"
+        }
+    }
+
+    preBuild.dependsOn 'setupSDL2Files'
+}
+
+task downloadSDL2AndImage {
+    doLast {
+        def cppDir = new File(project.projectDir, "src/main/cpp")
+
+        def sdl2Dir = new File(cppDir, "SDL2")
+        def imageDir = new File(cppDir, "SDL2_image")
+
+        def downloadDir = new File(project.buildDir, "downloads")
+        downloadDir.mkdirs()
+
+        /*
+         * SDL2
+         */
+        def sdl2Version = "2.28.5"
+        def sdl2Archive = new File(
+                downloadDir,
+                "SDL2-${sdl2Version}.tar.gz"
+        )
+
+        def sdl2Url =
+                "https://github.com/libsdl-org/SDL/releases/download/release-${sdl2Version}/SDL2-${sdl2Version}.tar.gz"
+
+        if (!sdl2Dir.exists()) {
+            println "Downloading SDL2 ${sdl2Version}..."
+
+            if (!sdl2Archive.exists()) {
+                new URL(sdl2Url).withInputStream { input ->
+                    sdl2Archive.withOutputStream { output ->
+                        output << input
+                    }
+                }
+            }
+
+            def extractDir = new File(
+                    downloadDir,
+                    "SDL2-${sdl2Version}"
+            )
+
+            if (!extractDir.exists()) {
+                exec {
+                    commandLine(
+                            "tar",
+                            "-xzf",
+                            sdl2Archive.absolutePath,
+                            "-C",
+                            downloadDir.absolutePath
+                    )
+                }
+            }
+
+            if (extractDir.exists()) {
+                copy {
+                    from extractDir
+                    into sdl2Dir
+                }
+            }
+        }
+
+        /*
+         * SDL2_image
+         */
+        def imageVersion = "2.6.3"
+        def imageArchive = new File(
+                downloadDir,
+                "SDL2_image-${imageVersion}.tar.gz"
+        )
+
+        def imageUrl =
+                "https://github.com/libsdl-org/SDL_image/releases/download/release-${imageVersion}/SDL2_image-${imageVersion}.tar.gz"
+
+        if (!imageDir.exists()) {
+            println "Downloading SDL2_image ${imageVersion}..."
+
+            if (!imageArchive.exists()) {
+                new URL(imageUrl).withInputStream { input ->
+                    imageArchive.withOutputStream { output ->
+                        output << input
+                    }
+                }
+            }
+
+            def extractDir = new File(
+                    downloadDir,
+                    "SDL2_image-${imageVersion}"
+            )
+
+            if (!extractDir.exists()) {
+                exec {
+                    commandLine(
+                            "tar",
+                            "-xzf",
+                            imageArchive.absolutePath,
+                            "-C",
+                            downloadDir.absolutePath
+                    )
+                }
+            }
+
+            if (extractDir.exists()) {
+                copy {
+                    from extractDir
+                    into imageDir
+                }
+            }
+        }
+
+        println "SDL2 and SDL2_image source prepared."
+    }
+}
+
+task setupSDL2Files {
+    dependsOn downloadSDL2AndImage
+
+    doLast {
+        def cppDir = new File(project.projectDir, "src/main/cpp")
+
+        def sdl2Dir = new File(cppDir, "SDL2")
+        def imageDir = new File(cppDir, "SDL2_image")
+
+        if (!sdl2Dir.exists()) {
+            throw new GradleException(
+                    "SDL2 source directory was not created: ${sdl2Dir}"
+            )
+        }
+
+        if (!imageDir.exists()) {
+            throw new GradleException(
+                    "SDL2_image source directory was not created: ${imageDir}"
+            )
+        }
+
+        println "=========================================="
+        println "SDL2 source: ${sdl2Dir}"
+        println "SDL2_image source: ${imageDir}"
+        println "SDL2 setup complete"
+        println "=========================================="
+    }
+}
+
+dependencies {
+    implementation 'androidx.appcompat:appcompat:1.6.1'
+}
