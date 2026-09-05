@@ -29,7 +29,7 @@ endif()
 set(SDL_SHARED ON CACHE BOOL "Build SDL2 as shared library" FORCE)
 set(SDL_STATIC OFF CACHE BOOL "Build SDL2 as static library" FORCE)
 
-# Disable SDL2 optional tests/examples.
+# Disable SDL2 optional tests.
 set(SDL_TESTS OFF CACHE BOOL "" FORCE)
 
 add_subdirectory(
@@ -51,11 +51,23 @@ if(NOT EXISTS "${SDL2_IMAGE_DIR}/CMakeLists.txt")
     )
 endif()
 
-# Do not build SDL2_image tests.
+# Do not build SDL2_image tests or samples.
 set(SDL2IMAGE_TESTS OFF CACHE BOOL "" FORCE)
+set(SDL2IMAGE_SAMPLES OFF CACHE BOOL "" FORCE)
 
 # Use the SDL2 target built above.
 set(SDL2IMAGE_VENDORED ON CACHE BOOL "" FORCE)
+
+# IMPORTANT:
+# SDL2_image 2.6.3 otherwise creates SDL2ImageExports.
+# That export contains SDL2_image, which depends on SDL2,
+# causing:
+#   target "SDL2_image" requires target "SDL2"
+#   that is not in any export set.
+#
+# We are embedding the library in the APK, so installation
+# and CMake export files are unnecessary.
+set(SDL2IMAGE_INSTALL OFF CACHE BOOL "" FORCE)
 
 add_subdirectory(
     "${SDL2_IMAGE_DIR}"
