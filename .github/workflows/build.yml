@@ -21,7 +21,7 @@ jobs:
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Install Android SDK components
+      - name: Install Android SDK and NDK
         run: |
           sdkmanager "platform-tools"
           sdkmanager "platforms;android-33"
@@ -30,43 +30,49 @@ jobs:
           sdkmanager "ndk;25.1.8937393"
 
       - name: Accept Android licenses
-        run: yes | sdkmanager --licenses || true
+        run: |
+          yes | sdkmanager --licenses || true
 
-      - name: Check Android toolchain
+      - name: Show project structure
+        run: |
+          echo "Working directory:"
+          pwd
+          echo
+          echo "Project files:"
+          find . -maxdepth 4 -type f | sort | head -300
+
+      - name: Verify native source
+        run: |
+          test -f app/src/main/cpp/game57-4.cxx
+          test -f app/src/main/cpp/CMakeLists.txt
+
+          echo "Native source found:"
+          ls -lh app/src/main/cpp/game57-4.cxx
+          echo
+          echo "CMakeLists found:"
+          ls -lh app/src/main/cpp/CMakeLists.txt
+
+      - name: Check Gradle installation
         run: |
           echo "Java:"
           java -version
 
+          echo
           echo "Gradle:"
-          chmod +x ./gradlew
-          ./gradlew --version
-
-          echo "NDK:"
-          ls "$ANDROID_SDK_ROOT/ndk/25.1.8937393"
-
-          echo "CMake:"
-          "$ANDROID_SDK_ROOT/cmake/3.22.1/bin/cmake" --version
-
-      - name: Verify game source
-        run: |
-          test -f app/src/main/cpp/game57-4.cxx
-          test -f app/src/main/cpp/CMakeLists.txt
-          echo "game57-4.cxx found"
-          echo "CMakeLists.txt found"
+          gradle --version
 
       - name: Build Debug APK
         run: |
-          chmod +x ./gradlew
-          ./gradlew clean assembleDebug --stacktrace
+          gradle clean assembleDebug --stacktrace
 
-      - name: Find APK
+      - name: Locate APK
         run: |
-          find app/build/outputs/apk -type f -name "*.apk" -print
+          echo "Generated APK files:"
+          find app/build/outputs -type f -name "*.apk" -print
 
-      - name: Upload APK
+      - name: Upload Debug APK
         uses: actions/upload-artifact@v4
         with:
           name: cxxgame-debug-apk
           path: app/build/outputs/apk/**/*.apk
           if-no-files-found: error
-
