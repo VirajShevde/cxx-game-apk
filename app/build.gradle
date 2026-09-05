@@ -1,3 +1,4 @@
+
 plugins {
     id 'com.android.application'
 }
@@ -24,8 +25,6 @@ android {
                 cppFlags ""
 
                 arguments "-DANDROID_STL=c++_shared",
-                          "-DSDL2_INCLUDE_DIR=${project.buildDir}/includes/SDL2",
-                          "-DSDL2_LIB_DIR=${project.buildDir}/libs/SDL2",
                           "-DANDROID_ABI=${selectedAbi}"
             }
         }
