@@ -53,22 +53,33 @@ jobs:
           unzip -q gradle-8.7-bin.zip
           echo "$PWD/gradle-8.7/bin" >> "$GITHUB_PATH"
 
+      # ============================================================
+      # SDL2 2.30.12
+      # ============================================================
+
       - name: Prepare SDL2
         run: |
           mkdir -p app/src/main/cpp
 
-          gh release download release-2.28.5 \
+          gh release download release-2.30.12 \
             --repo libsdl-org/SDL \
-            --pattern "SDL2-2.28.5.tar.gz" \
+            --pattern "SDL2-2.30.12.tar.gz" \
             --dir /tmp
 
           mkdir -p /tmp/sdl2
-          tar -xzf /tmp/SDL2-2.28.5.tar.gz -C /tmp/sdl2 --strip-components=1
+
+          tar -xzf /tmp/SDL2-2.30.12.tar.gz \
+            -C /tmp/sdl2 \
+            --strip-components=1
 
           rm -rf app/src/main/cpp/SDL2
           mkdir -p app/src/main/cpp/SDL2
 
           cp -a /tmp/sdl2/. app/src/main/cpp/SDL2/
+
+      # ============================================================
+      # SDL2_image 2.6.3
+      # ============================================================
 
       - name: Prepare SDL2_image
         run: |
@@ -78,6 +89,7 @@ jobs:
             --dir /tmp
 
           mkdir -p /tmp/sdl2_image
+
           tar -xzf /tmp/SDL2_image-2.6.3.tar.gz \
             -C /tmp/sdl2_image \
             --strip-components=1
@@ -87,6 +99,10 @@ jobs:
 
           cp -a /tmp/sdl2_image/. app/src/main/cpp/SDL2_image/
 
+      # ============================================================
+      # Verify native files
+      # ============================================================
+
       - name: Verify native files
         run: |
           test -f app/src/main/cpp/game57-4.cxx
@@ -95,9 +111,13 @@ jobs:
           test -f app/src/main/cpp/SDL2_image/CMakeLists.txt
 
           echo "ABI: ${{ matrix.abi }}"
-          echo "SDL2 source: OK"
-          echo "SDL2_image source: OK"
+          echo "SDL2 2.30.12 source: OK"
+          echo "SDL2_image 2.6.3 source: OK"
           echo "Game source: OK"
+
+      # ============================================================
+      # Build APK
+      # ============================================================
 
       - name: Build APK
         run: |
@@ -105,10 +125,18 @@ jobs:
             -PABI=${{ matrix.abi }} \
             --stacktrace
 
+      # ============================================================
+      # Show APK
+      # ============================================================
+
       - name: Show APK
         run: |
           echo "APK for ${{ matrix.abi }}:"
           find app/build/outputs -type f -name "*.apk" -print
+
+      # ============================================================
+      # Upload APK
+      # ============================================================
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
